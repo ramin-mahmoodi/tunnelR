@@ -4,7 +4,8 @@
 *.dll
 *.so
 *.dylib
-picotun
+# picotun binary (root only if needed, but usually we use dist/)
+/picotun
 
 # Test binary, built with `go test -c`
 *.test
