@@ -256,12 +256,12 @@ func applyProfile(c *Config) {
 		if c.Smux.FrameSize <= 0 {
 			c.Smux.FrameSize = 32768
 		}
-		// Smaller buffers (512KB / 256KB) prevent bufferbloat
-		if c.Smux.MaxRecv <= 0 || c.Smux.MaxRecv > 524288 {
-			c.Smux.MaxRecv = 524288
+		// Increase buffers to support ~400Mbps @ 200ms RTT (BDP tuning)
+		if c.Smux.MaxRecv <= 0 || c.Smux.MaxRecv > 2097152 {
+			c.Smux.MaxRecv = 2097152 // 2MB
 		}
-		if c.Smux.MaxStream <= 0 || c.Smux.MaxStream > 262144 {
-			c.Smux.MaxStream = 262144
+		if c.Smux.MaxStream <= 0 || c.Smux.MaxStream > 1048576 {
+			c.Smux.MaxStream = 1048576 // 1MB
 		}
 		// Moderate delay helps jitter but hurts throughput if too high
 		c.Obfuscation.MinDelayMS = 0
