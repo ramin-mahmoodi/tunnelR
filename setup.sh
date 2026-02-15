@@ -2,7 +2,7 @@
 
 # ═══════════════════════════════════════════════════════════════
 # PicoTun — Dagger-Compatible Reverse Tunnel
-# Setup Script (bash <(curl -s https://raw.githubusercontent.com/amir6dev/RsTunnel/main/setup.sh))
+# Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ═══════════════════════════════════════════════════════════════
 
 RED='\033[0;31m'
@@ -19,7 +19,7 @@ INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/picotun"
 SYSTEMD_DIR="/etc/systemd/system"
 
-GITHUB_REPO="amir6dev/RsTunnel"
+GITHUB_REPO="ramin-mahmoodi/tunnelR"
 LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 
 # ───────────── Banner & Checks ─────────────
@@ -28,7 +28,7 @@ show_banner() {
     clear
     echo -e "${CYAN}"
     echo "  ╔═══════════════════════════════════════╗"
-    echo "  ║           PicoTun Tunnel              ║"
+    echo "  ║           TunnelR (PicoTun)           ║"
     echo "  ║   Dagger-Compatible Architecture      ║"
     echo "  ╚═══════════════════════════════════════╝"
     echo -e "${NC}"
