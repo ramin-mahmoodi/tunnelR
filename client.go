@@ -171,6 +171,12 @@ func (c *Client) connectAndServe(pathIdx int) error {
 		conn, err = DialFragmented(dialAddr, c.fragmentCfg(), dialTimeout)
 	default:
 		conn, err = net.DialTimeout("tcp", dialAddr, dialTimeout)
+		if err == nil {
+			// Enforce TCP_NODELAY for standard dials too
+			if tc, ok := conn.(*net.TCPConn); ok {
+				tc.SetNoDelay(true)
+			}
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)

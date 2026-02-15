@@ -248,6 +248,36 @@ func applyProfile(c *Config) {
 			}
 		}
 
+	case "stable":
+		// Stable = CONSISTENCY over burst speed: smaller buffers to prevent bloat
+		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 15 {
+			c.Smux.KeepAlive = 15
+		}
+		if c.Smux.FrameSize <= 0 {
+			c.Smux.FrameSize = 32768
+		}
+		// Smaller buffers (512KB / 256KB) prevent bufferbloat
+		if c.Smux.MaxRecv <= 0 || c.Smux.MaxRecv > 524288 {
+			c.Smux.MaxRecv = 524288
+		}
+		if c.Smux.MaxStream <= 0 || c.Smux.MaxStream > 262144 {
+			c.Smux.MaxStream = 262144
+		}
+		// Moderate delay helps jitter but hurts throughput if too high
+		c.Obfuscation.MinDelayMS = 0
+		c.Obfuscation.MaxDelayMS = 0
+		for i := range c.Paths {
+			if c.Paths[i].ConnectionPool <= 0 {
+				c.Paths[i].ConnectionPool = 2
+			}
+			if c.Paths[i].RetryInterval <= 0 {
+				c.Paths[i].RetryInterval = 3
+			}
+			if c.Paths[i].DialTimeout <= 0 {
+				c.Paths[i].DialTimeout = 10
+			}
+		}
+
 	case "latency":
 		// Low latency: similar to aggressive but slightly more conservative
 		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 5 {
