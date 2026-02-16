@@ -448,6 +448,10 @@ install_client_auto() {
         return
     fi
 
+    read -p "Connection Pool Size [8]: " POOL_SIZE
+    POOL_SIZE=${POOL_SIZE:-8}
+
+
     # Write config
     mkdir -p "$CONFIG_DIR"
     CONFIG_FILE="$CONFIG_DIR/client.yaml"
@@ -462,7 +466,7 @@ heartbeat: 2
 paths:
   - transport: "${TRANSPORT}"
     addr: "${SERVER_ADDR}"
-    connection_pool: 3
+    connection_pool: ${POOL_SIZE}
     aggressive_pool: true
     retry_interval: 3
     dial_timeout: 20
