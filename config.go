@@ -254,7 +254,7 @@ func applyProfile(c *Config) {
 			c.Smux.KeepAlive = 15
 		}
 		if c.Smux.FrameSize <= 0 {
-			c.Smux.FrameSize = 32768
+			c.Smux.FrameSize = 2048 // 2KB (looks like HTTP/2 frames to DPI)
 		}
 		// Increase buffers to support ~400Mbps @ 200ms RTT (BDP tuning)
 		if c.Smux.MaxRecv <= 0 || c.Smux.MaxRecv > 2097152 {
