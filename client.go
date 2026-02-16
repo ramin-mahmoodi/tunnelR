@@ -62,6 +62,8 @@ func (c *Client) Start() error {
 
 	errCh := make(chan error, 1)
 
+	go c.sessionHealthCheck()
+
 	for pathIdx, path := range c.paths {
 		poolSize := path.ConnectionPool
 		if poolSize <= 0 {
@@ -183,7 +185,8 @@ func (c *Client) connectAndServe(pathIdx int) error {
 	}
 
 	// 2. Mimicry handshake (HTTP GET + WebSocket Upgrade → 101)
-	if err := ClientHandshake(conn, c.mimic); err != nil {
+	conn, err = ClientHandshake(conn, c.mimic)
+	if err != nil {
 		conn.Close()
 		return fmt.Errorf("handshake: %w", err)
 	}
@@ -295,6 +298,29 @@ func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 		return stream, nil
 	}
 	return nil, fmt.Errorf("all sessions exhausted")
+}
+
+func (c *Client) sessionHealthCheck() {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		c.sessMu.Lock()
+		alive := c.sessions[:0]
+		removed := 0
+		for _, sess := range c.sessions {
+			if sess.IsClosed() {
+				sess.Close()
+				removed++
+			} else {
+				alive = append(alive, sess)
+			}
+		}
+		c.sessions = alive
+		c.sessMu.Unlock()
+		if removed > 0 && c.verbose {
+			log.Printf("[POOL] cleaned %d dead (alive: %d)", removed, len(alive))
+		}
+	}
 }
 
 // ───────────── TLS with fragmentation + uTLS fingerprint ─────────────

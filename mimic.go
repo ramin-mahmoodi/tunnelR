@@ -13,6 +13,28 @@ import (
 	"strings"
 )
 
+// ═══════════════════════════════════════════════════════════════
+// bufferedConn — CRITICAL FIX for data loss bug.
+//
+// Problem: bufio.NewReader(conn) in http.ReadResponse may read
+// ahead beyond the HTTP response boundary. Those extra bytes are
+// the first smux frames (keepalive, version negotiation).
+// If we discard the bufio.Reader and use raw conn for EncryptedConn,
+// those buffered bytes are LOST → smux session dies in ~30 seconds.
+//
+// Solution: wrap conn + bufio.Reader so Read() goes through the
+// buffer first, preserving any pre-read smux data.
+// ═══════════════════════════════════════════════════════════════
+
+type bufferedConn struct {
+	net.Conn
+	r *bufio.Reader
+}
+
+func (c *bufferedConn) Read(p []byte) (int, error) {
+	return c.r.Read(p)
+}
+
 // init() removed — rand.Seed is deprecated in Go 1.22+
 // All random generation now uses crypto/rand for security
 
@@ -27,7 +49,8 @@ type MimicConfig struct {
 }
 
 // ClientHandshake سمت کلاینت: ارسال درخواست HTTP جعلی برای فریب فایروال
-func ClientHandshake(conn net.Conn, cfg *MimicConfig) error {
+// Returns a wrapped net.Conn that preserves any buffered data.
+func ClientHandshake(conn net.Conn, cfg *MimicConfig) (net.Conn, error) {
 	// تنظیم مقادیر پیش‌فرض
 	domain := "www.google.com"
 	path := "/"
@@ -54,7 +77,7 @@ func ClientHandshake(conn net.Conn, cfg *MimicConfig) error {
 
 	req, err := http.NewRequest("GET", fullURL, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// تنظیم هدرهای ضروری برای شبیه‌سازی WebSocket
@@ -84,18 +107,21 @@ func ClientHandshake(conn net.Conn, cfg *MimicConfig) error {
 	// نوشتن درخواست روی کانکشن TCP به صورت خام
 	reqDump, err := httputil.DumpRequest(req, false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = conn.Write(reqDump)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// خواندن پاسخ سرور
 	// سرور باید 101 Switching Protocols برگرداند
-	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
+	// ── Read response using bufio.Reader ──
+	// CRITICAL: Keep the bufio.Reader — it may contain pre-read smux data!
+	br := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(br, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Close the response body to avoid resource leaks
 	if resp.Body != nil {
@@ -103,10 +129,11 @@ func ClientHandshake(conn net.Conn, cfg *MimicConfig) error {
 	}
 
 	if resp.StatusCode != 101 && resp.StatusCode != 200 {
-		return fmt.Errorf("handshake failed: expected 101 or 200, got %d", resp.StatusCode)
+		return nil, fmt.Errorf("handshake failed: expected 101 or 200, got %d", resp.StatusCode)
 	}
 
-	return nil
+	// Return wrapped conn that reads through bufio first
+	return &bufferedConn{Conn: conn, r: br}, nil
 }
 
 // BuildURLWithFakePath مسیر جعلی تصادفی می‌سازد
