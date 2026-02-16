@@ -11,6 +11,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -26,6 +27,12 @@ import (
 // buffer first, preserving any pre-read smux data.
 // ═══════════════════════════════════════════════════════════════
 
+var readerPool = sync.Pool{
+	New: func() any {
+		return bufio.NewReaderSize(strings.NewReader(""), 4096)
+	},
+}
+
 type bufferedConn struct {
 	net.Conn
 	r *bufio.Reader
@@ -33,6 +40,17 @@ type bufferedConn struct {
 
 func (c *bufferedConn) Read(p []byte) (int, error) {
 	return c.r.Read(p)
+}
+
+func (c *bufferedConn) Close() error {
+	defer func() {
+		if c.r != nil {
+			c.r.Reset(strings.NewReader("")) // Detach from conn
+			readerPool.Put(c.r)
+			c.r = nil
+		}
+	}()
+	return c.Conn.Close()
 }
 
 // init() removed — rand.Seed is deprecated in Go 1.22+
@@ -118,9 +136,12 @@ func ClientHandshake(conn net.Conn, cfg *MimicConfig) (net.Conn, error) {
 	// سرور باید 101 Switching Protocols برگرداند
 	// ── Read response using bufio.Reader ──
 	// CRITICAL: Keep the bufio.Reader — it may contain pre-read smux data!
-	br := bufio.NewReader(conn)
+	br := readerPool.Get().(*bufio.Reader)
+	br.Reset(conn)
 	resp, err := http.ReadResponse(br, req)
 	if err != nil {
+		br.Reset(strings.NewReader(""))
+		readerPool.Put(br)
 		return nil, err
 	}
 	// Close the response body to avoid resource leaks
@@ -129,6 +150,8 @@ func ClientHandshake(conn net.Conn, cfg *MimicConfig) (net.Conn, error) {
 	}
 
 	if resp.StatusCode != 101 && resp.StatusCode != 200 {
+		br.Reset(strings.NewReader(""))
+		readerPool.Put(br)
 		return nil, fmt.Errorf("handshake failed: expected 101 or 200, got %d", resp.StatusCode)
 	}
 

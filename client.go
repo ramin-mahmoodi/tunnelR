@@ -301,24 +301,71 @@ func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 }
 
 func (c *Client) sessionHealthCheck() {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-	for range ticker.C {
-		c.sessMu.Lock()
-		alive := c.sessions[:0]
-		removed := 0
-		for _, sess := range c.sessions {
-			if sess.IsClosed() {
-				sess.Close()
-				removed++
-			} else {
-				alive = append(alive, sess)
+	// 1. Cleanup ticker (fast check for explicitly closed sessions)
+	cleanTicker := time.NewTicker(3 * time.Second)
+	// 2. Ping ticker (active check for zombie sessions)
+	pingTicker := time.NewTicker(10 * time.Second)
+
+	defer cleanTicker.Stop()
+	defer pingTicker.Stop()
+
+	for {
+		select {
+		case <-cleanTicker.C:
+			c.sessMu.Lock()
+			alive := c.sessions[:0]
+			removed := 0
+			for _, sess := range c.sessions {
+				if sess.IsClosed() {
+					sess.Close()
+					removed++
+				} else {
+					alive = append(alive, sess)
+				}
 			}
-		}
-		c.sessions = alive
-		c.sessMu.Unlock()
-		if removed > 0 && c.verbose {
-			log.Printf("[POOL] cleaned %d dead (alive: %d)", removed, len(alive))
+			c.sessions = alive
+			c.sessMu.Unlock()
+			if removed > 0 && c.verbose {
+				log.Printf("[POOL] cleaned %d dead (alive: %d)", removed, len(alive))
+			}
+
+		case <-pingTicker.C:
+			c.sessMu.RLock()
+			// Snapshot active sessions to avoid holding lock during network I/O
+			currentSessions := make([]*smux.Session, len(c.sessions))
+			copy(currentSessions, c.sessions)
+			c.sessMu.RUnlock()
+
+			for _, sess := range currentSessions {
+				if sess.IsClosed() {
+					continue
+				}
+				// Verify liveness in background
+				go func(s *smux.Session) {
+					done := make(chan error, 1)
+					go func() {
+						// Use OpenStream as a "Ping" substitute since s.Ping() is unavailable
+						stream, err := s.OpenStream()
+						if err == nil {
+							stream.Close()
+						}
+						done <- err
+					}()
+
+					select {
+					case err := <-done:
+						if err != nil {
+							s.Close()
+						}
+					case <-time.After(8 * time.Second):
+						// TIMEOUT -> ZOMBIE DETECTED
+						s.Close()
+						if c.verbose {
+							log.Printf("[HEALTH] session active check timeout (zombie) -> force closed")
+						}
+					}
+				}(sess)
+			}
 		}
 	}
 }
