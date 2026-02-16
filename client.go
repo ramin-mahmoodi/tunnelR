@@ -16,6 +16,17 @@ import (
 	"github.com/xtaci/smux"
 )
 
+// sessionMaxAge defines how long a session can live before being recycled.
+// Recycling prevents ISP/DPI throttling of long-lived connections.
+const sessionMaxAge = 20 * time.Minute
+
+// pooledSession wraps a smux.Session with its creation timestamp
+// for connection recycling (anti-throttle).
+type pooledSession struct {
+	session   *smux.Session
+	createdAt time.Time
+}
+
 // Client implements the Dagger-style tunnel client.
 // Flow: TCP/TLS connect → mimicry handshake → EncryptedConn → Compress → smux → streams
 type Client struct {
@@ -27,8 +38,8 @@ type Client struct {
 	verbose bool
 
 	sessMu   sync.RWMutex
-	sessions []*smux.Session // connection pool
-	sessIdx  uint64          // atomic round-robin index
+	sessions []*pooledSession // connection pool with age tracking
+	sessIdx  uint64           // atomic round-robin index
 }
 
 func NewClient(cfg *Config) *Client {
@@ -120,18 +131,18 @@ func (c *Client) Start() error {
 	return <-errCh
 }
 
-// addSession adds a session to the pool.
+// addSession adds a session to the pool with current timestamp.
 func (c *Client) addSession(sess *smux.Session) {
 	c.sessMu.Lock()
-	c.sessions = append(c.sessions, sess)
+	c.sessions = append(c.sessions, &pooledSession{session: sess, createdAt: time.Now()})
 	c.sessMu.Unlock()
 }
 
 // removeSession removes a specific session from the pool.
 func (c *Client) removeSession(sess *smux.Session) {
 	c.sessMu.Lock()
-	for i, s := range c.sessions {
-		if s == sess {
+	for i, ps := range c.sessions {
+		if ps.session == sess {
 			c.sessions = append(c.sessions[:i], c.sessions[i+1:]...)
 			break
 		}
@@ -272,7 +283,7 @@ func (c *Client) handleReverseStream(stream *smux.Stream) {
 // OpenStream opens a new stream using round-robin across the pool.
 func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 	c.sessMu.RLock()
-	pool := make([]*smux.Session, len(c.sessions))
+	pool := make([]*pooledSession, len(c.sessions))
 	copy(pool, c.sessions)
 	c.sessMu.RUnlock()
 
@@ -283,11 +294,11 @@ func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 	// Round-robin across healthy sessions
 	for attempts := 0; attempts < len(pool); attempts++ {
 		idx := int(atomic.AddUint64(&c.sessIdx, 1)) % len(pool)
-		sess := pool[idx]
-		if sess.IsClosed() {
+		ps := pool[idx]
+		if ps.session.IsClosed() {
 			continue
 		}
-		stream, err := sess.OpenStream()
+		stream, err := ps.session.OpenStream()
 		if err != nil {
 			continue
 		}
@@ -303,11 +314,11 @@ func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 func (c *Client) sessionHealthCheck() {
 	// 1. Cleanup ticker (fast check for explicitly closed sessions)
 	cleanTicker := time.NewTicker(3 * time.Second)
-	// 2. Ping ticker (active check for zombie sessions)
-	pingTicker := time.NewTicker(10 * time.Second)
+	// 2. Recycle ticker (close old sessions to prevent ISP throttling)
+	recycleTicker := time.NewTicker(1 * time.Minute)
 
 	defer cleanTicker.Stop()
-	defer pingTicker.Stop()
+	defer recycleTicker.Stop()
 
 	for {
 		select {
@@ -315,12 +326,12 @@ func (c *Client) sessionHealthCheck() {
 			c.sessMu.Lock()
 			alive := c.sessions[:0]
 			removed := 0
-			for _, sess := range c.sessions {
-				if sess.IsClosed() {
-					sess.Close()
+			for _, ps := range c.sessions {
+				if ps.session.IsClosed() {
+					ps.session.Close()
 					removed++
 				} else {
-					alive = append(alive, sess)
+					alive = append(alive, ps)
 				}
 			}
 			c.sessions = alive
@@ -329,42 +340,32 @@ func (c *Client) sessionHealthCheck() {
 				log.Printf("[POOL] cleaned %d dead (alive: %d)", removed, len(alive))
 			}
 
-		case <-pingTicker.C:
+		case <-recycleTicker.C:
+			// CONNECTION RECYCLING: Close the oldest expired session.
+			// Only ONE at a time to minimize disruption.
+			// The reconnect loop in Start() will automatically create a fresh replacement.
+			now := time.Now()
 			c.sessMu.RLock()
-			// Snapshot active sessions to avoid holding lock during network I/O
-			currentSessions := make([]*smux.Session, len(c.sessions))
-			copy(currentSessions, c.sessions)
-			c.sessMu.RUnlock()
-
-			for _, sess := range currentSessions {
-				if sess.IsClosed() {
+			var oldest *pooledSession
+			for _, ps := range c.sessions {
+				if ps.session.IsClosed() {
 					continue
 				}
-				// Verify liveness in background
-				go func(s *smux.Session) {
-					done := make(chan error, 1)
-					go func() {
-						// Use OpenStream as a "Ping" substitute since s.Ping() is unavailable
-						stream, err := s.OpenStream()
-						if err == nil {
-							stream.Close()
-						}
-						done <- err
-					}()
-
-					select {
-					case err := <-done:
-						if err != nil {
-							s.Close()
-						}
-					case <-time.After(8 * time.Second):
-						// TIMEOUT -> ZOMBIE DETECTED
-						s.Close()
-						if c.verbose {
-							log.Printf("[HEALTH] session active check timeout (zombie) -> force closed")
-						}
+				age := now.Sub(ps.createdAt)
+				if age > sessionMaxAge {
+					if oldest == nil || ps.createdAt.Before(oldest.createdAt) {
+						oldest = ps
 					}
-				}(sess)
+				}
+			}
+			c.sessMu.RUnlock()
+
+			if oldest != nil {
+				oldest.session.Close()
+				if c.verbose {
+					age := now.Sub(oldest.createdAt).Round(time.Second)
+					log.Printf("[RECYCLE] closed session (age: %v) -> fresh connection incoming", age)
+				}
 			}
 		}
 	}
