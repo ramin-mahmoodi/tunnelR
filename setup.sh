@@ -1395,10 +1395,10 @@ update_binary() {
 
     download_binary
 
-    download_binary
-
-    # Update Dashboard Assets if installed
-    if [ -d "/var/lib/picotun/dashboard" ]; then
+    # Update/Install Dashboard Assets
+    echo ""
+    read -p "Update/Install Dashboard Assets (HTML/CSS)? [Y/n]: " ud
+    if [[ ! "$ud" =~ ^[Nn]$ ]]; then
         echo -e "${YELLOW}Updating dashboard assets...${NC}"
         rm -rf "/var/lib/picotun/dashboard"
         install_dashboard_assets
