@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ===============================================================
 
-SCRIPT_VERSION="3.4.7"
+SCRIPT_VERSION="3.5.1"
 
 
 # Colors & Styling
@@ -1343,7 +1343,7 @@ dashboard_menu() {
 # DASHBOARD-CONFIG-START
 dashboard:
   enabled: true
-  listen: "0.0.0.0:8080"
+  listen: "0.0.0.0:8585"
   user: "${DASH_USER}"
   pass: "${DASH_PASS}"
   session_secret: "${SESSION_SECRET}"
@@ -1354,7 +1354,7 @@ EOF
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
             systemctl restart "$SVC"
             echo -e "${GREEN}[OK] Service restarted.${NC}"
-            echo -e "Access at: http://YOUR_IP:8080"
+            echo -e "Access at: http://YOUR_IP:8585"
         fi
         
     elif [ "$c" == "2" ]; then
