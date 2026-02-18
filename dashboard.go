@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,7 +28,10 @@ type DashboardConfig struct {
 type dashboardState struct {
 	mode      string
 	version   string
+	version   string
 	client    *Client
+	server    *Server
+	latency   int64 // atomic ns
 	startTime time.Time
 	cfg       DashboardConfig
 }
@@ -35,7 +39,7 @@ type dashboardState struct {
 var dashState dashboardState
 
 // StartDashboard launches the web dashboard HTTP server.
-func StartDashboard(cfg DashboardConfig, mode, version string, client *Client) {
+func StartDashboard(cfg DashboardConfig, mode, version string, client *Client, server *Server) {
 	if !cfg.Enabled {
 		return
 	}
@@ -55,9 +59,12 @@ func StartDashboard(cfg DashboardConfig, mode, version string, client *Client) {
 		mode:      mode,
 		version:   version,
 		client:    client,
+		server:    server,
 		startTime: time.Now(),
 		cfg:       cfg,
 	}
+
+	go startPingMonitor()
 
 	mux := http.NewServeMux()
 
@@ -153,6 +160,29 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 			"reconnects":      snap.Reconnects,
 			"active_sessions": snap.ActiveSessions,
 		},
+	}
+
+	lat := atomic.LoadInt64(&dashState.latency)
+	if lat > 0 {
+		resp["ping_ms"] = float64(lat) / 1e6
+	} else {
+		resp["ping_ms"] = -1
+	}
+
+	if dashState.server != nil {
+		s := dashState.server
+		s.sessMu.RLock()
+		sessions := []map[string]interface{}{}
+		for addr, sess := range s.sessions {
+			sessions = append(sessions, map[string]interface{}{
+				"addr": addr, "streams": sess.NumStreams(), "closed": sess.IsClosed(),
+			})
+		}
+		s.sessMu.RUnlock()
+		resp["server"] = map[string]interface{}{
+			"sessions": sessions,
+			"count":    len(sessions),
+		}
 	}
 
 	if dashState.client != nil {
@@ -303,6 +333,22 @@ func humanBytes(b int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+func startPingMonitor() {
+	for {
+		start := time.Now()
+		// Ping Google DNS port 53 (reliable, usually unblocked)
+		conn, err := net.DialTimeout("tcp", "8.8.8.8:53", 2*time.Second)
+		if err == nil {
+			conn.Close()
+			dur := time.Since(start).Nanoseconds()
+			atomic.StoreInt64(&dashState.latency, dur)
+		} else {
+			atomic.StoreInt64(&dashState.latency, -1)
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 // ─── Frontend Assets ───

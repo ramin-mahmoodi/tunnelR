@@ -49,12 +49,12 @@ func main() {
 	switch strings.ToLower(strings.TrimSpace(cfg.Mode)) {
 	case "server":
 		srv := httpmux.NewServer(cfg)
-		httpmux.StartDashboard(cfg.Dashboard, "server", version, nil)
+		httpmux.StartDashboard(cfg.Dashboard, "server", version, nil, srv)
 		go func() { errCh <- srv.Start() }()
 
 	case "client":
 		cl := httpmux.NewClient(cfg)
-		httpmux.StartDashboard(cfg.Dashboard, "client", version, cl)
+		httpmux.StartDashboard(cfg.Dashboard, "client", version, cl, nil)
 		go func() { errCh <- cl.Start() }()
 
 	default:

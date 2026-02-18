@@ -1,0 +1,562 @@
+﻿<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicoTun Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#137fec",
+                    "background-light": "#f6f7f8",
+                    "background-dark": "#0f1115",
+                    "surface-dark": "#161b22",
+                    "accent-green": "#00ff9d",
+                },
+                fontFamily: { "display": ["Inter", "sans-serif"] },
+            },
+        },
+    }
+</script>
+<style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    body { font-family: 'Inter', sans-serif; }
+    .glass-card {
+        background: rgba(22, 27, 34, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .status-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .view { display: none; }
+    .view.active { display: block; }
+    /* Config Editor */
+    textarea { background: #0b0e14 !important; color: #e2e8f0; border: 1px solid #30363d; font-family: monospace; width: 100%; height: 500px; padding: 1rem; border-radius: 0.5rem; outline: none; }
+    /* Logs */
+    #logs-out { background: #000; color: #4ade80; font-family: monospace; height: 500px; overflow-y: auto; padding: 1rem; border-radius: 0.5rem; font-size: 13px; }
+</style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 bg-background-light dark:bg-[#0a0c10] border-r border-slate-200 dark:border-slate-800 flex flex-col hidden md:flex">
+    <div class="p-6 flex items-center gap-3">
+        <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined">subway</span>
+        </div>
+        <div>
+            <h1 class="text-lg font-bold tracking-tight">PicoTun <span class="text-primary">Pro</span></h1>
+            <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.1.0</p>
+        </div>
+    </div>
+    <nav class="flex-1 px-4 space-y-1">
+        <a onclick="setView('dash')" class="nav-item active flex items-center gap-3 px-3 py-2.5 bg-primary/10 text-primary rounded-lg font-medium transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[22px]">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a onclick="setView('tunnels')" class="nav-item flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-lg font-medium transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[22px]">hub</span>
+            <span>Tunnels</span>
+        </a>
+        <a onclick="setView('logs')" class="nav-item flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-lg font-medium transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[22px]">terminal</span>
+            <span>Logs</span>
+        </a>
+        <a onclick="setView('settings')" class="nav-item flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-lg font-medium transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[22px]">settings</span>
+            <span>Settings</span>
+        </a>
+    </nav>
+    
+
+</aside>
+
+<!-- Main Content -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <!-- Header -->
+    <header class="h-16 flex-shrink-0 flex items-center justify-between px-8 bg-background-light dark:bg-background-dark/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md z-10">
+        <div class="flex items-center gap-4">
+            <button class="md:hidden p-2 text-slate-500 hover:text-primary transition-colors" onclick="toggleSidebar()">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+            <h2 class="text-xl font-bold tracking-tight" id="page-title">Dashboard Overview</h2>
+            <span class="bg-accent-green/10 text-accent-green px-2.5 py-0.5 rounded-full text-xs font-bold border border-accent-green/20">System Healthy</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="p-2 text-slate-500 hover:text-primary transition-colors" onclick="location.reload()">
+                <span class="material-symbols-outlined">refresh</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTENT BODY -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dash" class="view active">
+            <!-- Stats Cards -->
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <!-- CPU -->
+                <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">CPU Usage</p>
+                            <h3 class="text-3xl font-bold tracking-tight"><span id="cpu-val">...</span><span class="text-lg text-slate-400 font-medium">%</span></h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined">memory</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- RAM -->
+                <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">RAM Usage</p>
+                            <h3 class="text-3xl font-bold tracking-tight"><span id="ram-val">...</span></h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-accent-green/10 flex items-center justify-center text-accent-green">
+                            <span class="material-symbols-outlined">storage</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Uptime -->
+                <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">System Uptime</p>
+                            <h3 class="text-3xl font-bold tracking-tight tabular-nums" id="uptime-val">...</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
+                            <span class="material-symbols-outlined">schedule</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                <!-- Latency -->
+                <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-sm font-medium text-slate-500 mb-1">Latency (Google)</p>
+                            <h3 class="text-3xl font-bold tracking-tight"><span id="ping-val">...</span><span class="text-lg text-slate-400 font-medium">ms</span></h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
+                            <span class="material-symbols-outlined">network_check</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="glass-card rounded-xl p-6 mb-6">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h4 class="text-lg font-bold">Traffic Overview</h4>
+                        <p class="text-sm text-slate-500">Real-time throughput monitor</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-primary"></div>
+                            <span class="text-xs font-medium text-slate-400">Upload</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 rounded-full bg-accent-green"></div>
+                            <span class="text-xs font-medium text-slate-400">Download</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-64 w-full relative">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+
+
+        </div>
+
+        <!-- TUNNELS VIEW -->
+        <div id="view-tunnels" class="view">
+             <div class="glass-card rounded-xl p-6 mb-6">
+                 <div class="flex items-center justify-between mb-4">
+                     <div>
+                        <h3 class="text-lg font-bold">Tunnel Management</h3>
+                        <p class="text-slate-500">Active sessions and connections.</p>
+                     </div>
+                     <button class="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors" onclick="refreshData()">
+                        <span class="material-symbols-outlined">refresh</span>
+                     </button>
+                 </div>
+                 
+                 <div class="overflow-x-auto rounded-lg border border-slate-700/50">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 dark:bg-surface-dark/50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                                <th class="px-6 py-3">Protocol</th>
+                                <th class="px-6 py-3">Endpoint</th>
+                                <th class="px-6 py-3">Stats</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3">Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessions-table" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
+             </div>
+        </div>
+
+        <!-- LOGS VIEW -->
+        <div id="view-logs" class="view">
+             <div class="glass-card rounded-xl p-6">
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">System Logs</h3>
+                    <select id="log-filter" onchange="filterLogs()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-sm text-slate-300">
+                        <option value="all">All Levels</option>
+                        <option value="error">Errors Only</option>
+                        <option value="warning">Warnings & Errors</option>
+                    </select>
+                 </div>
+                 <div id="logs-out">Connecting to log stream...</div>
+             </div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="view-settings" class="view">
+             <div class="glass-card rounded-xl p-6">
+                 <div class="flex justify-between items-center mb-4">
+                     <div>
+                        <h3 class="text-lg font-bold">Configuration</h3>
+                        <p class="text-slate-500 text-sm">Update server settings.</p>
+                     </div>
+                     <div class="flex gap-2">
+                        <button onclick="toggleEditMode()" class="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-slate-600 transition-colors">Advanced Editor</button>
+                        <button onclick="saveConfig()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors">Save & Restart</button>
+                     </div>
+                 </div>
+                 
+                 <div id="config-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Listen Address</label>
+                            <input type="text" id="conf-listen" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">PSK (Password)</label>
+                            <input type="text" id="conf-psk" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Mimic SNI (Camouflage)</label>
+                            <input type="text" id="conf-mimic" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Obfuscation SNI</label>
+                            <input type="text" id="conf-obfs" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
+                        </div>
+                    </div>
+                 </div>
+
+                 <textarea id="config-editor" class="hidden" spellcheck="false"></textarea>
+             </div>
+        </div>
+
+    </div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let chartInstance = null;
+let lastBytesSent = 0;
+let lastBytesRecv = 0;
+
+function setView(id) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-'+id).classList.add('active');
+    
+    // Nav Active State
+    document.querySelectorAll('.nav-item').forEach(el => {
+        el.className = el.className.replace(' bg-primary/10 text-primary', ' text-slate-500 hover:text-primary hover:bg-primary/5');
+        el.querySelector('span').classList.remove('text-primary'); // Icon fix attempt
+    });
+    // Setting active style manually nicely is hard purely via JS replace without classList logic
+    // but the clicked item is `event.currentTarget`.
+    const t = event.currentTarget;
+    t.className = "nav-item active flex items-center gap-3 px-3 py-2.5 bg-primary/10 text-primary rounded-lg font-medium transition-colors cursor-pointer";
+    
+    // Page Title
+    const map = {dash:'Dashboard Overview', tunnels:'Tunnel Management', logs:'System Logs', settings:'System Settings'};
+    $('#page-title').innerText = map[id];
+
+    if(id === 'logs') startLogs();
+    if(id === 'settings') loadConfig();
+}
+
+function toggleSidebar() {
+    const s = document.querySelector('aside');
+    if(s.classList.contains('hidden')) {
+        s.classList.remove('hidden');
+        s.classList.add('fixed', 'inset-y-0', 'left-0', 'z-50', 'shadow-2xl');
+    } else {
+        s.classList.add('hidden');
+        s.classList.remove('fixed', 'inset-y-0', 'left-0', 'z-50', 'shadow-2xl');
+    }
+}
+
+function initChart() {
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const gradientTx = ctx.createLinearGradient(0, 0, 0, 300);
+    gradientTx.addColorStop(0, 'rgba(19, 127, 236, 0.4)');
+    gradientTx.addColorStop(1, 'rgba(19, 127, 236, 0.0)');
+    
+    const gradientRx = ctx.createLinearGradient(0, 0, 0, 300);
+    gradientRx.addColorStop(0, 'rgba(0, 255, 157, 0.4)');
+    gradientRx.addColorStop(1, 'rgba(0, 255, 157, 0.0)');
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(30).fill(''),
+            datasets: [
+                {
+                    label: 'Upload',
+                    data: Array(30).fill(0),
+                    borderColor: '#137fec',
+                    backgroundColor: gradientTx,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Download',
+                    data: Array(30).fill(0),
+                    borderColor: '#00ff9d',
+                    backgroundColor: gradientRx,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { display: false },
+                y: { display: false }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function updateStats(data) {
+    if(!data) return;
+    
+    $('#cpu-val').innerText = data.cpu || 0;
+    $('#ram-val').innerText = data.ram || '0 B';
+    $('#uptime-val').innerText = data.uptime || '0s';
+
+    // Ping
+    if(data.ping_ms && data.ping_ms > -1) {
+            const p = data.ping_ms.toFixed(0);
+            $('#ping-val').innerText = p;
+            $('#ping-val').className = p < 100 ? "text-green-400" : (p < 200 ? "text-yellow-400" : "text-red-400");
+    } else {
+            $('#ping-val').innerText = 'Timeout';
+            $('#ping-val').className = "text-red-500 text-lg";
+    }
+    
+    // Chart
+    const currentSent = data.stats.bytes_sent || 0;
+    const currentRecv = data.stats.bytes_recv || 0;
+    
+    if(lastBytesSent > 0) {
+        const deltaSent = (currentSent - lastBytesSent) / 1024;
+        const deltaRecv = (currentRecv - lastBytesRecv) / 1024;
+        
+        if(chartInstance) {
+            chartInstance.data.datasets[0].data.shift();
+            chartInstance.data.datasets[0].data.push(deltaSent);
+            chartInstance.data.datasets[1].data.shift();
+            chartInstance.data.datasets[1].data.push(deltaRecv);
+            chartInstance.update('none');
+        }
+    }
+    lastBytesSent = currentSent;
+    lastBytesRecv = currentRecv;
+
+    // Tunnel Table
+    const tbody = $('#sessions-table');
+    if(data.server && data.server.sessions) {
+        let html = '';
+        data.server.sessions.forEach(s => {
+            html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                <td class="px-6 py-4 text-slate-300">TCP/Mux</td>
+                <td class="px-6 py-4 font-mono text-xs text-slate-400">${s.addr}</td>
+                <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
+                <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
+                <td class="px-6 py-4 text-slate-500">Client</td>
+            </tr>`;
+        });
+        if(html === '') html = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No active clients.</td></tr>';
+        tbody.innerHTML = html;
+    } else if (data.client && data.client.sessions) {
+            let html = '';
+            data.client.sessions.forEach(s => {
+            html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                <td class="px-6 py-4 text-slate-300">Session #${s.id}</td>
+                <td class="px-6 py-4 font-mono text-xs text-slate-400">Server</td>
+                <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
+                <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
+                <td class="px-6 py-4 text-slate-500">${s.age}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    } else {
+        // Fallback for old stats or empty
+        if(data.stats.active_conns > 0) {
+             tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500">Active Connections: '+data.stats.active_conns+'</td></tr>';
+        } else {
+             tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500">No active tunnels</td></tr>';
+        }
+    }
+}
+
+function formatUptime(seconds) {
+    const d = Math.floor(seconds / (3600*24));
+    const h = Math.floor(seconds % (3600*24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    return `${d}d ${h}h ${m}m`;
+}
+
+// Stats Poller
+setInterval(() => {
+    fetch('/api/stats').then(r => {
+        if(r.status===401) location.reload();
+        return r.json();
+    }).then(updateStats).catch(console.error);
+}, 1000);
+
+// Logs
+let es = null;
+
+function filterLogs() {
+    const filter = $('#log-filter').value;
+    const lines = document.querySelectorAll('#logs-out div');
+    lines.forEach(l => {
+        const txt = l.innerText.toLowerCase();
+        if(filter === 'all') l.style.display = 'block';
+        else if(filter === 'error' && !txt.includes('error') && !txt.includes('fail')) l.style.display = 'none';
+        else if(filter === 'warning' && !txt.includes('warn') && !txt.includes('error')) l.style.display = 'none';
+        else l.style.display = 'block';
+    });
+}
+
+function startLogs() {
+    if(es) return;
+    const el = $('#logs-out');
+    el.innerHTML = ''; // innerHTML to support divs
+    es = new EventSource('/api/logs/stream');
+    es.onmessage = e => {
+        const d = document.createElement('div');
+        d.innerText = e.data;
+        // Colorize
+        const txt = e.data.toLowerCase();
+        if(txt.includes('error') || txt.includes('fail')) d.style.color = '#ef4444';
+        else if(txt.includes('warn')) d.style.color = '#f59e0b';
+        
+        // Filter Check (Instant)
+        const filter = $('#log-filter') ? $('#log-filter').value : 'all';
+        if(filter === 'error' && !txt.includes('error') && !txt.includes('fail')) d.style.display = 'none';
+        
+        el.appendChild(d);
+        if(el.children.length > 200) el.removeChild(el.firstChild);
+        el.scrollTop = el.scrollHeight;
+    }
+}
+
+// Config
+// Config Form Logic
+async function loadConfig(raw=false) {
+    const r = await fetch('/api/config');
+    const txt = await r.text();
+    $('#config-editor').value = txt;
+    
+    if(!raw && $('#conf-listen')) {
+        const getVal = (k) => {
+            const m = txt.match(new RegExp(`^\\s*${k}:\\s*"?([^"\\n]+)"?`, 'm'));
+            return m ? m[1] : '';
+        };
+        $('#conf-listen').value = getVal('listen');
+        $('#conf-psk').value = getVal('psk');
+        
+        const mimic = txt.match(/mimic:\s*\n\s*target:\s*"?([^"\n]+)"?/);
+        if(mimic) $('#conf-mimic').value = mimic[1];
+        
+        const obfs = txt.match(/obfs:\s*\n\s*secret:\s*"?([^"\n]+)"?/);
+        if(obfs) $('#conf-obfs').value = obfs[1];
+    }
+}
+
+function toggleEditMode() {
+    const form = $('#config-form');
+    const editor = $('#config-editor');
+    if(editor.classList.contains('hidden')) {
+        editor.classList.remove('hidden'); form.classList.add('hidden');
+        loadConfig(true); 
+    } else {
+        editor.classList.add('hidden'); form.classList.remove('hidden');
+        loadConfig(false);
+    }
+}
+
+async function saveConfig() {
+    if(!confirm('Save config & Restart service?')) return;
+    let body = $('#config-editor').value;
+    
+    if($('#config-editor').classList.contains('hidden')) {
+        // Form Mode
+        let txt = body;
+        const lis = $('#conf-listen').value;
+        const psk = $('#conf-psk').value;
+        const mim = $('#conf-mimic').value;
+        const obf = $('#conf-obfs').value;
+        
+        if(txt.match(/listen:\s*".*?"/)) txt = txt.replace(/listen:\s*".*?"/, `listen: "${lis}"`);
+        else txt = txt.replace(/listen:\s*\S+/, `listen: ${lis}`);
+
+        if(txt.match(/psk:\s*".*?"/)) txt = txt.replace(/psk:\s*".*?"/, `psk: "${psk}"`);
+        else txt = txt.replace(/psk:\s*\S+/, `psk: ${psk}`);
+
+        txt = txt.replace(/(mimic:\s*\n\s*target:\s*").*?"/, `$1${mim}"`);
+        txt = txt.replace(/(obfs:\s*\n\s*secret:\s*").*?"/, `$1${obf}"`);
+        
+        body = txt;
+    }
+    
+    await fetch('/api/config', {method:'POST', body: body});
+    await fetch('/api/restart', {method:'POST'});
+    alert('Restarting...');
+    setTimeout(()=>location.reload(), 5000);
+}
+
+// Init
+initChart();
+
+</script>
+</body>
+</html>
