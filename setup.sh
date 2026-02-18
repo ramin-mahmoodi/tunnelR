@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-SCRIPT_VERSION="3.4.4"
+SCRIPT_VERSION="3.4.5"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,7 +25,7 @@ GITHUB_REPO="ramin-mahmoodi/tunnelR"
 # Use 'latest' endpoint to rigidly respect the user's "Latest Release" on GitHub
 LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Banner & Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ------------------------- Banner & Checks -------------------------
 
 show_banner() {
     clear
@@ -75,7 +75,7 @@ get_current_version() {
     fi
 }
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Download Binary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ------------------------- Download Binary -------------------------
 
 download_binary() {
     echo -e "${YELLOW}â¬‡ï¸  Downloading PicoTun...${NC}"
