@@ -28,7 +28,6 @@ type DashboardConfig struct {
 type dashboardState struct {
 	mode      string
 	version   string
-	version   string
 	client    *Client
 	server    *Server
 	latency   int64 // atomic ns
