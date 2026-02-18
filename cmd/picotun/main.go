@@ -13,7 +13,7 @@ import (
 	httpmux "github.com/amir6dev/rstunnel/PicoTun"
 )
 
-var version = "2.7.0"
+var version = "2.8.0"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -49,10 +49,12 @@ func main() {
 	switch strings.ToLower(strings.TrimSpace(cfg.Mode)) {
 	case "server":
 		srv := httpmux.NewServer(cfg)
+		httpmux.StartDashboard(cfg.Dashboard, "server", version, nil)
 		go func() { errCh <- srv.Start() }()
 
 	case "client":
 		cl := httpmux.NewClient(cfg)
+		httpmux.StartDashboard(cfg.Dashboard, "client", version, cl)
 		go func() { errCh <- cl.Start() }()
 
 	default:

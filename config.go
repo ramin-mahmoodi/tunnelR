@@ -50,7 +50,8 @@ type Config struct {
 
 	SessionTimeout int `yaml:"session_timeout"`
 
-	DNS DNSConfig `yaml:"dns"`
+	DNS       DNSConfig       `yaml:"dns"`
+	Dashboard DashboardConfig `yaml:"dashboard"`
 }
 
 type DNSConfig struct {
