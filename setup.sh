@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.3)..."
+    echo "Creating Dashboard Assets (v3.5.4)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,7 +859,7 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.3</title>
+    <title>TunnelR v3.5.4</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
@@ -886,6 +886,8 @@ install_dashboard_assets() {
 
         .icon-box { background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px; color: #60a5fa; }
         .icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
@@ -894,7 +896,7 @@ install_dashboard_assets() {
     <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col hidden md:flex" style="background-color: var(--bg-nav);">
         <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">T</div>
-            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.3</span></h1>
+            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.4</span></h1>
         </div>
 
         <nav class="flex-1 px-4 space-y-2 mt-6">
@@ -930,89 +932,56 @@ install_dashboard_assets() {
             
             <!-- VIEW: DASHBOARD -->
             <div id="view-dash" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     
-                    <!-- CPU Card -->
+                    <!-- CPU & RAM -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start mb-4">
+                        <div class="grid grid-cols-2 gap-8">
                             <div>
                                 <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">CPU Usage</div>
                                 <div class="text-3xl font-bold text-white tabular-nums"><span id="cpu-val">0</span>%</div>
-                            </div>
-                            <div class="icon-box text-blue-400 bg-blue-500/10">
-                                <svg class="icon"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                            </div>
-                        </div>
-                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                            <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
-                        </div>
-                    </div>
-
-                    <!-- RAM Card -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM (Used/Total)</div>
-                                <div class="text-3xl font-bold text-white tabular-nums flex items-baseline gap-1">
-                                    <span id="ram-used">0</span>
-                                    <span class="text-sm text-slate-500 font-normal">/ <span id="ram-total">0</span></span>
+                                <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden mt-2">
+                                    <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
                                 </div>
                             </div>
-                            <div class="icon-box text-emerald-400 bg-emerald-500/10">
-                                <svg class="icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                             <div>
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM</div>
+                                <div class="text-3xl font-bold text-white tabular-nums text-sm"><span id="ram-used">0</span> / <span id="ram-total">0</span></div>
+                                <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden mt-2">
+                                    <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                            <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
                         </div>
                     </div>
 
-                    <!-- Service Uptime Card -->
+                    <!-- Uptime & Sessions -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start">
+                        <div class="grid grid-cols-2 gap-8">
                             <div>
                                 <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Service Uptime</div>
                                 <div class="text-2xl font-bold text-white tabular-nums mt-1" id="svc-uptime">00:00:00</div>
                             </div>
-                            <div class="icon-box text-orange-400 bg-orange-500/10">
-                                <svg class="icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-xs text-slate-500">Since run started</div>
-                    </div>
-
-                    <!-- Sessions & Volume Card -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Sessions</div>
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Active Sessions</div>
                                 <div class="text-3xl font-bold text-white tabular-nums mt-1" id="sess-count">0</div>
-                            </div>
-                            <div class="icon-box text-purple-400 bg-purple-500/10">
-                                <svg class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            </div>
-                        </div>
-                        <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-slate-700/50 pt-2">
-                            <div>
-                                <span class="text-slate-500 block">Total Sent</span>
-                                <span id="vol-sent" class="text-blue-400">0 B</span>
-                            </div>
-                            <div>
-                                <span class="text-slate-500 block">Total Recv</span>
-                                <span id="vol-recv" class="text-emerald-400">0 B</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Traffic Chart -->
+                <!-- Traffic Chart (MATCHING REFERENCE IMAGE) -->
                 <div class="card p-6 mb-6">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
-                            <h3 class="text-lg font-bold text-white">Network Traffic</h3>
-                            <div class="flex gap-4 mt-1 text-sm font-mono">
-                                <span class="text-blue-400">↑ <span id="speed-up">0 B/s</span></span>
-                                <span class="text-emerald-400">↓ <span id="speed-down">0 B/s</span></span>
+                            <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
+                            <p class="text-slate-500 text-sm">Real-time throughput monitor</p>
+                        </div>
+                        <div class="flex gap-6 mt-4 md:mt-0 text-sm font-medium">
+                            <div class="flex items-center text-slate-300">
+                                <span class="legend-dot bg-blue-500"></span> Upload (<span id="lg-up" class="font-mono">0 B/s</span>)
+                            </div>
+                            <div class="flex items-center text-slate-300">
+                                <span class="legend-dot bg-emerald-500"></span> Download (<span id="lg-down" class="font-mono">0 B/s</span>)
                             </div>
                         </div>
                     </div>
@@ -1022,7 +991,7 @@ install_dashboard_assets() {
                 </div>
             </div>
 
-            <!-- VIEW: LOGS -->
+             <!-- VIEW: LOGS -->
             <div id="view-logs" class="view">
                 <div class="card flex flex-col h-[calc(100vh-160px)] border-slate-700/50">
                     <div class="p-4 border-b border-slate-700/50 flex justify-between bg-slate-800/30 rounded-t-xl items-center">
@@ -1133,14 +1102,11 @@ install_dashboard_assets() {
                 n.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
                 n.classList.add('text-slate-400', 'hover:bg-slate-800');
             });
-            
             $(`#view-${id}`).classList.add('active');
             const nav = $(`#nav-${id}`);
             nav.classList.remove('text-slate-400', 'hover:bg-slate-800');
             nav.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
-            
             $('#page-title').innerText = nav.innerText.trim();
-            
             if(id === 'logs') initLogs();
             if(id === 'settings') loadConfig();
         }
@@ -1171,22 +1137,18 @@ install_dashboard_assets() {
                 
                 $('#sess-count').innerText = data.stats.total_conns;
                 
-                // Volume
-                $('#vol-sent').innerText = data.stats.sent_human;
-                $('#vol-recv').innerText = data.stats.recv_human;
-                
-                // Service Uptime (Reverted per request)
+                // Service Uptime
                 if (data.uptime_s) {
                      $('#svc-uptime').innerText = formatUptime(data.uptime_s);
                 } else {
                      $('#svc-uptime').innerText = "00:00:00";
                 }
 
-                // Traffic
+                // Update Legend
                 const up = humanBytes(data.stats.speed_up || 0);
                 const down = humanBytes(data.stats.speed_down || 0);
-                $('#speed-up').innerText = up + '/s';
-                $('#speed-down').innerText = down + '/s';
+                $('#lg-up').innerText = up + '/s';
+                $('#lg-down').innerText = down + '/s';
 
                 updateChart(data.stats.speed_down || 0, data.stats.speed_up || 0);
 
@@ -1210,6 +1172,9 @@ install_dashboard_assets() {
         }
 
         function updateChart(rx, tx) {
+            const now = new Date();
+            const timeLabel = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
             if(!chart) {
                 const ctx = $('#trafficChart').getContext('2d');
                 chart = new Chart(ctx, {
@@ -1217,13 +1182,37 @@ install_dashboard_assets() {
                     data: {
                         labels: Array(30).fill(''),
                         datasets: [
-                            { label: 'DL', data: Array(30).fill(0), borderColor: '#10b981', backgroundColor: '#10b98110', fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 },
-                            { label: 'UL', data: Array(30).fill(0), borderColor: '#3b82f6', backgroundColor: '#3b82f610', fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 }
+                            { label: 'Download', data: Array(30).fill(0), borderColor: '#10b981', backgroundColor: (ctx) => {
+                                const bg = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+                                bg.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+                                bg.addColorStop(1, 'rgba(16, 185, 129, 0)');
+                                return bg;
+                            }, fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 },
+                            { label: 'Upload', data: Array(30).fill(0), borderColor: '#3b82f6', backgroundColor: (ctx) => {
+                                const bg = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+                                bg.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+                                bg.addColorStop(1, 'rgba(59, 130, 246, 0)');
+                                return bg;
+                            }, fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 }
                         ]
                     },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { x:{display:false}, y:{display:true, tick:{color:'#475569'}, grid:{color:'#1e293b'} } }, plugins: { legend:{display:false} }, animation: false, interaction: {intersect: false} }
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        scales: { 
+                            x:{display:true, grid:{display:false}, ticks:{color:'#64748b', maxTicksLimit: 6} }, 
+                            y:{display:true, position:'right', grid:{color:'#1e293b'}, ticks:{color:'#64748b', callback: function(val){ return humanBytes(val) }} } 
+                        }, 
+                        plugins: { legend:{display:false} }, 
+                        animation: false, 
+                        interaction: {intersect: false} 
+                    }
                 });
             }
+            
+            chart.data.labels.push(timeLabel);
+            chart.data.labels.shift();
+
             chart.data.datasets[0].data.push(rx);
             chart.data.datasets[1].data.push(tx);
             chart.data.datasets[0].data.shift();
@@ -1232,51 +1221,45 @@ install_dashboard_assets() {
         }
 
         function humanBytes(b) {
+            if(b==0) return '0 B';
             const u = ['B', 'KB', 'MB', 'GB'];
             let i=0;
             while(b >= 1024 && i < u.length-1) { b/=1024; i++; }
             return b.toFixed(1) + ' ' + u[i];
         }
 
-        // --- CONFIG LOADER ---
+        // --- CONFIG LOADER & LOGS (Unchanged) ---
+        // ... (Keep existing logic for brevity in python script construction) ...
+        // Re-injecting full script for safety
+        
         async function loadConfig() {
             const t = await (await fetch('/api/config')).text();
             config = jsyaml.load(t);
             if(!config) return;
-
             setVal('mode', config.mode);
             setVal('transport', config.transport);
             setVal('listen', config.listen);
             setVal('psk', config.psk);
             setVal('cert', config.cert_file);
             setVal('key', config.key_file);
-            
             const http = config.http_mimic || {};
             setVal('domain', http.fake_domain);
             setVal('ua', http.user_agent);
-
             const smux = config.smux || {};
             setVal('smux-ver', smux.version);
             setVal('smux-ka', smux.keepalive);
             setVal('smux-stream', smux.max_stream);
             setVal('smux-recv', smux.max_recv);
-
             const obfs = config.obfuscation || {};
             $('#f-obfs-en').checked = obfs.enabled;
             setVal('obfs-min', obfs.min_padding);
             setVal('obfs-max', obfs.max_padding);
-
             const adv = config.advanced || {};
             setVal('tcp-buf', adv.tcp_read_buffer);
             setVal('tcp-ka', adv.tcp_keepalive);
             $('#f-nodelay').checked = adv.tcp_nodelay;
         }
-
-        function setVal(id, val) {
-            const el = $(`#f-${id}`);
-            if(el) el.value = (val !== undefined && val !== null) ? val : '';
-        }
-
+        function setVal(id, val) { const el = $(`#f-${id}`); if(el) el.value = (val !== undefined && val !== null) ? val : ''; }
         async function saveConfig() {
             if(!confirm('Apply changes and restart?')) return;
             config.listen = $('#f-listen').value;
@@ -1301,22 +1284,13 @@ install_dashboard_assets() {
             config.advanced.tcp_write_buffer = parseInt($('#f-tcp-buf').value); 
             config.advanced.tcp_keepalive = parseInt($('#f-tcp-ka').value);
             config.advanced.tcp_nodelay = $('#f-nodelay').checked;
-
             const yaml = jsyaml.dump(config);
             try {
                 const r = await fetch('/api/config', { method:'POST', body: yaml });
-                if(r.ok) {
-                    await fetch('/api/restart', { method:'POST' });
-                    alert('Restarting...');
-                    setTimeout(()=>location.reload(), 3000);
-                } else {
-                    const txt = await r.text();
-                    alert('Error: '+txt);
-                }
+                if(r.ok) { await fetch('/api/restart', { method:'POST' }); alert('Restarting...'); setTimeout(()=>location.reload(), 3000); } 
+                else { const txt = await r.text(); alert('Error: '+txt); }
             } catch(e) { alert(e); }
         }
-
-        // --- LOGS ---
         let logSrc;
         function initLogs() {
             if(logSrc) return;
@@ -1329,7 +1303,6 @@ install_dashboard_assets() {
                 if(t.includes('ERR') || t.includes('fail')) d.className = 'text-red-400 border-l-2 border-red-500 pl-2 bg-red-400/10 rounded-r';
                 else if(t.includes('WARN')) d.className = 'text-yellow-400 border-l-2 border-yellow-500 pl-2 bg-yellow-400/10 rounded-r';
                 else d.className = 'text-slate-300 border-l-2 border-transparent pl-2 hover:bg-slate-800/50 rounded-r transition-colors';
-                
                 d.classList.add(t.includes('ERR')||t.includes('fail') ? 'log-error' : (t.includes('WARN')?'log-warn':'log-info'));
                 const c = $('#logs-container');
                 c.appendChild(d);
@@ -1342,10 +1315,7 @@ install_dashboard_assets() {
         function setLogFilter(f) { 
             window.logFilter = f; 
             document.querySelectorAll('#logs-container div').forEach(applyFilter); 
-            ['all','warn','error'].forEach(id => {
-                 $(`#btn-log-${id}`).classList.remove('bg-slate-700', 'text-white');
-                 if(id === 'all') $(`#btn-log-${id}`).classList.add('text-slate-300');
-            });
+            ['all','warn','error'].forEach(id => { $(`#btn-log-${id}`).classList.remove('bg-slate-700', 'text-white'); if(id === 'all') $(`#btn-log-${id}`).classList.add('text-slate-300'); });
             $(`#btn-log-${f}`).classList.add('bg-slate-700', 'text-white');
         }
         function applyFilter(d) {
@@ -1359,6 +1329,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
