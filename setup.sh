@@ -991,6 +991,10 @@ install_dashboard_assets() {
                     <span class="material-symbols-outlined text-[18px]">code</span>
                     <span id="edit-mode-btn-text">Advanced Editor</span>
                 </button>
+                <button onclick="saveConfig()" class="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    <span>Save & Restart</span>
+                </button>
             </div>
 
             <!-- Form Mode -->
@@ -1128,84 +1132,83 @@ function initChart() {
     });
 }
 
-function updateStats(data) {
+// v3.2.0 Enhanced Logic
+async function updateStats(data) {
     if(!data) return;
-    
-    $('#cpu-val').innerText = data.cpu || 0;
-    $('#ram-val').innerText = data.ram || '0 B';
-    $('#uptime-val').innerText = data.uptime || '0s';
+    try {
+        // Basic Stats
+        $('#cpu-val').innerText = data.cpu || 0;
+        $('#ram-val').innerText = data.ram || '0 B';
 
-    // Ping
-    if(data.ping_ms && data.ping_ms > -1) {
-            const p = data.ping_ms.toFixed(0);
-            $('#ping-val').innerText = p;
-            $('#ping-val').className = p < 100 ? "text-green-400" : (p < 200 ? "text-yellow-400" : "text-red-400");
-    } else {
-            $('#ping-val').innerText = 'Timeout';
-            $('#ping-val').className = "text-red-500 text-lg";
-    }
-    
-    // Chart
-    const currentSent = data.stats.bytes_sent || 0;
-    const currentRecv = data.stats.bytes_recv || 0;
-    
-    if(lastBytesSent > 0) {
-        const deltaSent = (currentSent - lastBytesSent) / 1024;
-        const deltaRecv = (currentRecv - lastBytesRecv) / 1024;
+        // Ping
+        if(data.ping_ms && data.ping_ms > -1) {
+             const p = data.ping_ms.toFixed(0);
+             $('#ping-val').innerText = p;
+             $('#ping-val').className = p < 100 ? "text-green-400" : (p < 200 ? "text-yellow-400" : "text-red-400");
+        } else {
+             $('#ping-val').innerText = 'Timeout';
+             $('#ping-val').className = "text-red-500 text-lg";
+        }
+
+        // Chart
+        if (data.start_time) {
+            const start = new Date(data.start_time);
+            const now = new Date();
+            const diff = Math.floor((now - start) / 1000); // seconds
+            
+            let uptimeStr = "";
+            if (diff < 60) uptimeStr = diff + "s";
+            else if (diff < 3600) uptimeStr = Math.floor(diff/60) + "m " + (diff%60) + "s";
+            else if (diff < 86400) uptimeStr = Math.floor(diff/3600) + "h " + Math.floor((diff%3600)/60) + "m";
+            else uptimeStr = Math.floor(diff/86400) + "d " + Math.floor((diff%86400)/3600) + "h";
+
+            if(document.getElementById('uptime-val')) document.getElementById('uptime-val').innerText = uptimeStr;
+        }
         
-        if(chartInstance) {
-            chartInstance.data.datasets[0].data.shift();
-            chartInstance.data.datasets[0].data.push(deltaSent);
-            chartInstance.data.datasets[1].data.shift();
-            chartInstance.data.datasets[1].data.push(deltaRecv);
+        // Update Chart Data
+        const currentSent = data.stats.bytes_sent || 0;
+        const currentRecv = data.stats.bytes_recv || 0;
+        
+        if(chartInstance && lastBytesSent > 0) {
+            const up = (currentSent - lastBytesSent) / 1024; // KB
+            const down = (currentRecv - lastBytesRecv) / 1024; // KB
+            
+            if(chartInstance.data.labels.length > 20) {
+                chartInstance.data.labels.shift();
+                chartInstance.data.datasets[0].data.shift();
+                chartInstance.data.datasets[1].data.shift();
+            }
+            chartInstance.data.labels.push(new Date());
+            chartInstance.data.datasets[0].data.push(up);
+            chartInstance.data.datasets[1].data.push(down);
             chartInstance.update('none');
         }
-    }
-    lastBytesSent = currentSent;
-    lastBytesRecv = currentRecv;
+        lastBytesSent = currentSent;
+        lastBytesRecv = currentRecv;
 
-    // Tunnel Table
-    const tbody = $('#sessions-table');
-    if(data.server && data.server.sessions) {
-        let html = '';
-        data.server.sessions.forEach(s => {
-            html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                <td class="px-6 py-4 text-slate-300">TCP/Mux</td>
-                <td class="px-6 py-4 font-mono text-xs text-slate-400">${s.addr}</td>
-                <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
-                <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
-                <td class="px-6 py-4 text-slate-500">Client</td>
-            </tr>`;
-        });
-        if(html === '') html = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No active clients.</td></tr>';
-        tbody.innerHTML = html;
-    } else if (data.client && data.client.sessions) {
+        // Tunnel Table
+        const tbody = $('#sessions-table');
+        if(tbody && (data.server || data.client)) {
             let html = '';
-            data.client.sessions.forEach(s => {
-            html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                <td class="px-6 py-4 text-slate-300">Session #${s.id}</td>
-                <td class="px-6 py-4 font-mono text-xs text-slate-400">Server</td>
-                <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
-                <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
-                <td class="px-6 py-4 text-slate-500">${s.age}</td>
-            </tr>`;
-        });
-        tbody.innerHTML = html;
-    } else {
-        // Fallback for old stats or empty
-        if(data.stats.active_conns > 0) {
-             tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500">Active Connections: '+data.stats.active_conns+'</td></tr>';
-        } else {
-             tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500">No active tunnels</td></tr>';
+            const sessions = data.server ? data.server.sessions : (data.client ? data.client.sessions : []);
+            
+            if(sessions) {
+                 sessions.forEach(s => {
+                    html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                        <td class="px-6 py-4 text-slate-300">${data.server ? 'TCP/Mux' : 'Session #'+s.id}</td>
+                        <td class="px-6 py-4 font-mono text-xs text-slate-400">${data.server ? s.addr : 'Server'}</td>
+                        <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
+                        <td class="px-6 py-4 text-slate-500">${data.server ? 'Client' : s.age}</td>
+                    </tr>`;
+                });
+            }
+            
+            if(html === '') html = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No active sessions.</td></tr>';
+            tbody.innerHTML = html;
         }
-    }
-}
 
-function formatUptime(seconds) {
-    const d = Math.floor(seconds / (3600*24));
-    const h = Math.floor(seconds % (3600*24) / 3600);
-    const m = Math.floor(seconds % 3600 / 60);
-    return `${d}d ${h}h ${m}m`;
+    } catch(e) { console.error('Stats Error:', e); }
 }
 
 // Stats Poller
@@ -1218,31 +1221,31 @@ setInterval(() => {
 
 // Logs
 let es = null;
-
-    function filterLogs(level) {
-        currentFilter = level;
-        const logContainer = document.getElementById('log-container');
-        const logs = logContainer.getElementsByClassName('log-entry');
-        
-        for (let log of logs) {
-            const text = log.innerText.toLowerCase();
-            let show = false;
-
-            if (level === 'all') show = true;
-            if (level === 'error' && text.includes('error')) show = true;
-            if (level === 'warn' && (text.includes('warn') || text.includes('error'))) show = true;
-
-            log.style.display = show ? 'block' : 'none';
-        }
+function filterLogs() {
+    const level = $('#log-filter').value;
+    const logContainer = document.getElementById('logs-out');
+    const logs = logContainer.getElementsByClassName('log-entry');
+    
+    for (let log of logs) {
+        const text = log.innerText.toLowerCase();
+        let show = false;
+        if (level === 'all') show = true;
+        if (level === 'error' && (text.includes('error') || text.includes('fail'))) show = true;
+        if (level === 'warn' && (text.includes('warn') || text.includes('error') || text.includes('fail'))) show = true;
+        log.style.display = show ? 'block' : 'none';
     }
+}
+
 function startLogs() {
     if(es) return;
     const el = $('#logs-out');
-    el.innerHTML = ''; // innerHTML to support divs
+    el.innerHTML = ''; 
     es = new EventSource('/api/logs/stream');
     es.onmessage = e => {
         const d = document.createElement('div');
+        d.className = 'log-entry'; // IMPORTANT for filtering
         d.innerText = e.data;
+        
         // Colorize
         const txt = e.data.toLowerCase();
         if(txt.includes('error') || txt.includes('fail')) d.style.color = '#ef4444';
@@ -1251,14 +1254,14 @@ function startLogs() {
         // Filter Check (Instant)
         const filter = $('#log-filter') ? $('#log-filter').value : 'all';
         if(filter === 'error' && !txt.includes('error') && !txt.includes('fail')) d.style.display = 'none';
-        
+        else if(filter === 'warning' && !txt.includes('warn') && !txt.includes('error')) d.style.display = 'none';
+
         el.appendChild(d);
         if(el.children.length > 200) el.removeChild(el.firstChild);
         el.scrollTop = el.scrollHeight;
     }
 }
 
-// Config
 // Config Form Logic
 async function loadConfig(raw=false) {
     const r = await fetch('/api/config');
@@ -1305,8 +1308,8 @@ async function saveConfig() {
     let body = $('#config-editor').value;
     
     if($('#config-editor').classList.contains('hidden')) {
-        // Form Mode
-        let newConfig = body; // Use a new variable to build the updated config
+        // Form Mode -> Update config from Form inputs
+        let newConfig = body; 
         
         const listen = document.getElementById('cfg-listen').value;
         const psk = document.getElementById('cfg-psk').value;
@@ -1316,14 +1319,12 @@ async function saveConfig() {
         const keepalive = document.getElementById('cfg-keepalive').value;
         const buffers = document.getElementById('cfg-buffers').value;
 
-        // Helper to replace or add a key-value pair
+        // Helper
         const replaceOrAdd = (config, key, value, isString = true) => {
             const regex = new RegExp(`^(\\s*${key}:\\s*)(.*)`, 'm');
             if (config.match(regex)) {
                 return config.replace(regex, `$1${isString ? `"${value}"` : value}`);
             } else {
-                // If key doesn't exist, add it at the end (or a logical place)
-                // For simplicity, appending to the end of the main block
                 return config + `\n${key}: ${isString ? `"${value}"` : value}`;
             }
         };
@@ -1331,7 +1332,7 @@ async function saveConfig() {
         newConfig = replaceOrAdd(newConfig, 'listen', listen);
         newConfig = replaceOrAdd(newConfig, 'psk', psk);
 
-        // Handle nested mimic and obfs
+        // Nested keys logic
         if (newConfig.includes('mimic:')) {
             newConfig = newConfig.replace(/(mimic:\s*\n\s*target:\s*").*?"/, `$1${sni}"`);
         } else if (sni) {
@@ -1359,197 +1360,6 @@ async function saveConfig() {
 
 // Init
 initChart();
-
-// v3.2.0 Enhanced Logic
-async function updateStats() {
-    try {
-        const r = await fetch('/api/stats');
-        const d = await r.json();
-        
-        // Basic Stats
-        $('#cpu-val').innerText = d.cpu || 0;
-        $('#ram-val').innerText = d.ram || '0 B';
-        // $('#uptime-val').innerText = d.uptime || '0s'; // Original line
-
-        // Ping
-        if(d.ping_ms && d.ping_ms > -1) {
-             const p = d.ping_ms.toFixed(0);
-             $('#ping-val').innerText = p;
-             $('#ping-val').className = p < 100 ? "text-green-400" : (p < 200 ? "text-yellow-400" : "text-red-400");
-        } else {
-             $('#ping-val').innerText = 'Timeout';
-             $('#ping-val').className = "text-red-500 text-lg";
-        }
-
-        // Chart
-        if (d.start_time) {
-            const start = new Date(d.start_time);
-            const now = new Date();
-            const diff = Math.floor((now - start) / 1000); // seconds
-            
-            let uptimeStr = "";
-            if (diff < 60) uptimeStr = diff + "s";
-            else if (diff < 3600) uptimeStr = Math.floor(diff/60) + "m " + (diff%60) + "s";
-            else if (diff < 86400) uptimeStr = Math.floor(diff/3600) + "h " + Math.floor((diff%3600)/60) + "m";
-            else uptimeStr = Math.floor(diff/86400) + "d " + Math.floor((diff%86400)/3600) + "h";
-
-            document.getElementById('uptime-val').innerText = uptimeStr;
-        }
-        if(chartInstance) {
-            const up = (d.stats.bytes_sent - lastBytesSent) / 1024; // KB
-            const down = (d.stats.bytes_recv - lastBytesRecv) / 1024; // KB
-            lastBytesSent = d.stats.bytes_sent;
-            lastBytesRecv = d.stats.bytes_recv;
-            
-            if(chartInstance.data.labels.length > 20) {
-                chartInstance.data.labels.shift();
-                chartInstance.data.datasets[0].data.shift();
-                chartInstance.data.datasets[1].data.shift();
-            }
-            chartInstance.data.labels.push(now);
-            chartInstance.data.datasets[0].data.push(up);
-            chartInstance.data.datasets[1].data.push(down);
-            chartInstance.update('none');
-        }
-
-        // Tunnel Table
-        const tbody = $('#sessions-table');
-        if(d.server && d.server.sessions) {
-            let html = '';
-            d.server.sessions.forEach(s => {
-                html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                    <td class="px-6 py-4 text-slate-300">TCP/Mux</td>
-                    <td class="px-6 py-4 font-mono text-xs text-slate-400">${s.addr}</td>
-                    <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
-                    <td class="px-6 py-4 text-slate-500">Only Client</td>
-                </tr>`;
-            });
-            if(html === '') html = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No active clients connected.</td></tr>';
-            tbody.innerHTML = html;
-        } else if (d.client && d.client.sessions) {
-             // Client Logic (Sessions)
-             let html = '';
-             d.client.sessions.forEach(s => {
-                html += `<tr class="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-                    <td class="px-6 py-4 text-slate-300">Session #${s.id}</td>
-                    <td class="px-6 py-4 font-mono text-xs text-slate-400">Server</td>
-                    <td class="px-6 py-4 text-slate-400">Streams: ${s.streams}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-green-500/10 text-green-500'}">${s.closed?'Closed':'Active'}</span></td>
-                    <td class="px-6 py-4 text-slate-500">${s.age}</td>
-                </tr>`;
-            });
-            tbody.innerHTML = html;
-        }
-
-    } catch(e) { console.error(e); }
-}
-
-// Config Form Logic
-async function loadConfig(raw=false) {
-    const r = await fetch('/api/config');
-    const txt = await r.text();
-    $('#config-editor').value = txt;
-    
-    if(!raw && $('#cfg-listen')) {
-        // Parse basic yaml keys using regex
-        const getVal = (k) => {
-            const m = txt.match(new RegExp(`^\\s*${k}:\\s*"?([^"\\n]+)"?`, 'm'));
-            return m ? m[1] : '';
-        };
-        $('#cfg-listen').value = getVal('listen');
-        $('#cfg-psk').value = getVal('psk');
-        
-        const mimic = txt.match(/mimic:\s*\n\s*target:\s*"?([^"\n]+)"?/);
-        if(mimic) $('#cfg-sni').value = mimic[1];
-        
-        const obfs = txt.match(/obfs:\s*\n\s*secret:\s*"?([^"\n]+)"?/);
-        if(obfs) $('#cfg-obs').value = obfs[1];
-
-        $('#cfg-timeout').value = getVal('timeout');
-        $('#cfg-keepalive').value = getVal('keep_alive');
-        $('#cfg-buffers').value = getVal('max_buffers');
-    }
-}
-
-function toggleEditMode() {
-    const form = $('#cfg-form');
-    const editor = $('#config-editor');
-    const btnText = $('#edit-mode-btn-text');
-    if(editor.classList.contains('hidden')) {
-        editor.classList.remove('hidden'); form.classList.add('hidden');
-        btnText.innerText = 'Form Editor';
-        loadConfig(true); 
-    } else {
-        editor.classList.add('hidden'); form.classList.remove('hidden');
-        btnText.innerText = 'Advanced Editor';
-        loadConfig(false);
-    }
-}
-
-async function saveConfig() {
-    if(!confirm('Save config & Restart service?')) return;
-    let body = $('#config-editor').value;
-    
-    if($('#config-editor').classList.contains('hidden')) {
-        // Form Mode -> Update Text
-        let txt = body; // body has loaded text?
-        // We need to reload raw first? No, loadConfig(false) put raw in editor.
-        // Update values
-        const rep = (k, v) => txt = txt.replace(new RegExp(`^(\\s*${k}:\\s*").*?(")`, 'm'), `$1${v}$2`).replace(new RegExp(`^(\\s*${k}:\\s*)([^"\\s].*)`, 'm'), `$1${v}`);
-        
-        // This regex replacement is brittle. 
-        // Fallback: Just update regex matches.
-        const lis = $('#conf-listen').value;
-        const psk = $('#conf-psk').value;
-        
-        // Simple replace
-        txt = txt.replace(/listen:\s*".*?"/, `listen: "${lis}"`);
-        txt = txt.replace(/psk:\s*".*?"/, `psk: "${psk}"`);
-        // If no quotes
-        if(!txt.includes(`listen: "`)) txt = txt.replace(/listen:\s*\S+/, `listen: ${lis}`);
-        
-        // Mimic
-        const mim = $('#conf-mimic').value;
-        txt = txt.replace(/(mimic:\s*\n\s*target:\s*").*?"/, `$1${mim}"`);
-        
-        body = txt;
-    }
-    
-    await fetch('/api/config', {method:'POST', body: body});
-    await fetch('/api/restart', {method:'POST'});
-    alert('Restarting... Page will reload.');
-    setTimeout(()=>location.reload(), 5000);
-}
-
-function filterLogs() {
-    const filter = $('#log-filter').value;
-    const lines = document.querySelectorAll('#logs-out div'); // assuming logs are divs?
-    // logs-out is text/event-stream content appended as text? 
-    // handleLogsStream sends raw text. Frontend?
-    // Wait, log viewer implementation needs check.
-    // If it just appends text, we can't filter easily.
-    // We need to wrap lines in <div>.
-}
-// Log Stream Enhancer
-const oldLog = new EventSource('/api/logs/stream');
-// Creating new one might duplicate?
-// The original setup.sh had:
-/*
-    const es = new EventSource('/api/logs/stream');
-    es.onmessage = e => {
-        const d = document.createElement('div');
-        d.innerText = e.data;
-        $('#logs-out').prepend(d);
-         if($('#logs-out').children.length > 200) $('#logs-out').lastChild.remove();
-    };
-*/
-// I need to override this logic or wrap it.
-// I'll leave Filtering for next iteration as I can't easily replace the existing ES logic without finding it.
-// I'll just implement the dropdown UI (already done) but logic is empty.
-// User didn't ask for filtering explicitly in "1, 2, 7" prompt, they prioritized 1, 2. (7 was Log Analyzer).
-// I'll add basic coloring only.
-
 loadConfig(); // Initial Load
 
 </script>
