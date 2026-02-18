@@ -333,7 +333,6 @@ transport: "${TRANSPORT}"
 psk: "${PSK}"
 profile: "aggressive"
 verbose: true
-verbose: true
 heartbeat: 2
 
 dashboard:
@@ -635,7 +634,6 @@ listen: "0.0.0.0:${LISTEN_PORT}"
 transport: "${TRANSPORT}"
 psk: "${PSK}"
 profile: "${PROFILE}"
-verbose: ${VERBOSE}
 verbose: ${VERBOSE}
 
 dashboard:
