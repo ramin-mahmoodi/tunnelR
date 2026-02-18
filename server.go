@@ -657,20 +657,36 @@ func sendTarget(w io.Writer, target string) error {
 }
 
 // relay does bidirectional copy between two read-writers.
+// MeasuredReader wraps an io.Reader and updates a counter on every Read.
+type MeasuredReader struct {
+	R io.Reader
+	N *int64
+}
+
+func (m *MeasuredReader) Read(p []byte) (n int, err error) {
+	n, err = m.R.Read(p)
+	if n > 0 {
+		atomic.AddInt64(m.N, int64(n))
+	}
+	return
+}
+
+// relay does bidirectional copy between two read-writers.
 // Uses pooled 128KB buffers for high throughput on multiplexed connections.
 // Properly closes both sides when either direction finishes.
-// Tracks bytes transferred in GlobalStats.
+// Tracks bytes transferred in GlobalStats REAL-TIME.
 func relay(a, b io.ReadWriteCloser) {
 	atomic.AddInt64(&GlobalStats.ActiveConns, 1)
 	atomic.AddInt64(&GlobalStats.TotalConns, 1)
 	defer atomic.AddInt64(&GlobalStats.ActiveConns, -1)
 
 	done := make(chan struct{}, 2)
-	cp := func(dst io.WriteCloser, src io.Reader, sent *int64) {
+	cp := func(dst io.WriteCloser, src io.Reader, counter *int64) {
 		bufPtr := relayBufPool.Get().(*[]byte)
-		n, _ := io.CopyBuffer(dst, src, *bufPtr)
+		// Wrap src with MeasuredReader to update stats during transfer
+		mr := &MeasuredReader{R: src, N: counter}
+		io.CopyBuffer(dst, mr, *bufPtr)
 		relayBufPool.Put(bufPtr)
-		atomic.AddInt64(sent, n)
 		dst.Close()
 		done <- struct{}{}
 	}

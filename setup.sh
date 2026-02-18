@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.4)..."
+    echo "Creating Dashboard Assets (v3.5.5)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,7 +859,7 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.4</title>
+    <title>TunnelR v3.5.5</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
@@ -896,7 +896,7 @@ install_dashboard_assets() {
     <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col hidden md:flex" style="background-color: var(--bg-nav);">
         <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">T</div>
-            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.4</span></h1>
+            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.5</span></h1>
         </div>
 
         <nav class="flex-1 px-4 space-y-2 mt-6">
@@ -932,44 +932,81 @@ install_dashboard_assets() {
             
             <!-- VIEW: DASHBOARD -->
             <div id="view-dash" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     
-                    <!-- CPU & RAM -->
+                    <!-- CPU Card -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="grid grid-cols-2 gap-8">
+                        <div class="flex justify-between items-start mb-4">
                             <div>
                                 <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">CPU Usage</div>
                                 <div class="text-3xl font-bold text-white tabular-nums"><span id="cpu-val">0</span>%</div>
-                                <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden mt-2">
-                                    <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
-                                </div>
                             </div>
-                             <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM</div>
-                                <div class="text-3xl font-bold text-white tabular-nums text-sm"><span id="ram-used">0</span> / <span id="ram-total">0</span></div>
-                                <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden mt-2">
-                                    <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
-                                </div>
+                            <div class="icon-box text-blue-400 bg-blue-500/10">
+                                <svg class="icon"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
                             </div>
+                        </div>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
+                            <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
                         </div>
                     </div>
 
-                    <!-- Uptime & Sessions -->
+                    <!-- RAM Card -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="grid grid-cols-2 gap-8">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM</div>
+                                <div class="text-3xl font-bold text-white tabular-nums text-sm flex items-baseline gap-1">
+                                    <span id="ram-used">0</span> / <span id="ram-total">0</span>
+                                </div>
+                            </div>
+                            <div class="icon-box text-emerald-400 bg-emerald-500/10">
+                                <svg class="icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
+                            <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Service Uptime -->
+                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-start">
                             <div>
                                 <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Service Uptime</div>
                                 <div class="text-2xl font-bold text-white tabular-nums mt-1" id="svc-uptime">00:00:00</div>
                             </div>
+                            <div class="icon-box text-orange-400 bg-orange-500/10">
+                                <svg class="icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-slate-500">Since run started</div>
+                    </div>
+
+                    <!-- Sessions (Restored Volume Display) -->
+                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-start">
                             <div>
                                 <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Active Sessions</div>
                                 <div class="text-3xl font-bold text-white tabular-nums mt-1" id="sess-count">0</div>
                             </div>
+                            <div class="icon-box text-purple-400 bg-purple-500/10">
+                                <svg class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
                         </div>
+                         <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-slate-700/50 pt-2">
+                             <div>
+                                <span class="text-slate-500 block">Total Sent</span>
+                                <span id="vol-sent" class="text-blue-400">0 B</span>
+                             </div>
+                             <div>
+                                <span class="text-slate-500 block">Total Recv</span>
+                                <span id="vol-recv" class="text-emerald-400">0 B</span>
+                             </div>
+                         </div>
                     </div>
                 </div>
 
-                <!-- Traffic Chart (MATCHING REFERENCE IMAGE) -->
+                <!-- Traffic Chart (Maintained v3.5.4 design) -->
                 <div class="card p-6 mb-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
@@ -991,7 +1028,7 @@ install_dashboard_assets() {
                 </div>
             </div>
 
-             <!-- VIEW: LOGS -->
+             <!-- VIEW: LOGS & SETTINGS (Unchanged) -->
             <div id="view-logs" class="view">
                 <div class="card flex flex-col h-[calc(100vh-160px)] border-slate-700/50">
                     <div class="p-4 border-b border-slate-700/50 flex justify-between bg-slate-800/30 rounded-t-xl items-center">
@@ -1011,7 +1048,6 @@ install_dashboard_assets() {
                 </div>
             </div>
 
-            <!-- VIEW: SETTINGS -->
             <div id="view-settings" class="view">
                 <div class="flex justify-between items-center mb-8">
                     <div>
@@ -1144,6 +1180,10 @@ install_dashboard_assets() {
                      $('#svc-uptime').innerText = "00:00:00";
                 }
 
+                // Volume (Restored in Sessions Card)
+                $('#vol-sent').innerText = data.stats.sent_human;
+                $('#vol-recv').innerText = data.stats.recv_human;
+
                 // Update Legend
                 const up = humanBytes(data.stats.speed_up || 0);
                 const down = humanBytes(data.stats.speed_down || 0);
@@ -1228,10 +1268,7 @@ install_dashboard_assets() {
             return b.toFixed(1) + ' ' + u[i];
         }
 
-        // --- CONFIG LOADER & LOGS (Unchanged) ---
-        // ... (Keep existing logic for brevity in python script construction) ...
-        // Re-injecting full script for safety
-        
+        // --- CONFIG LOADER & LOGS (Re-inject for safety) ---
         async function loadConfig() {
             const t = await (await fetch('/api/config')).text();
             config = jsyaml.load(t);
@@ -1329,6 +1366,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
