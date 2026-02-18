@@ -141,13 +141,14 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	runtime.ReadMemStats(&m)
 
 	resp := map[string]interface{}{
-		"mode":     dashState.mode,
-		"version":  dashState.version,
-		"uptime":   uptime.String(),
-		"uptime_s": uptime.Seconds(),
-		"cpu":      runtime.NumGoroutine(), // Valid proxy for load
-		"ram":      humanBytes(int64(m.Alloc)),
-		"ram_val":  m.Alloc,
+		"mode":       dashState.mode,
+		"version":    dashState.version,
+		"uptime":     uptime.String(),
+		"uptime_s":   uptime.Seconds(),
+		"start_time": dashState.startTime.Format(time.RFC3339),
+		"cpu":        runtime.NumGoroutine(),
+		"ram_val":    m.Alloc,
+		"ram":        humanBytes(int64(m.Alloc)),
 
 		"stats": map[string]interface{}{
 			"active_conns":    snap.ActiveConns,
@@ -162,16 +163,15 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lat := atomic.LoadInt64(&dashState.latency)
+	resp["ping_ms"] = -1
 	if lat > 0 {
 		resp["ping_ms"] = float64(lat) / 1e6
-	} else {
-		resp["ping_ms"] = -1
 	}
 
 	if dashState.server != nil {
 		s := dashState.server
 		s.sessMu.RLock()
-		sessions := []map[string]interface{}{}
+		sessions := make([]map[string]interface{}, 0, len(s.sessions))
 		for addr, sess := range s.sessions {
 			sessions = append(sessions, map[string]interface{}{
 				"addr": addr, "streams": sess.NumStreams(), "closed": sess.IsClosed(),
@@ -187,29 +187,27 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	if dashState.client != nil {
 		c := dashState.client
 		c.sessMu.RLock()
-		sessions := []map[string]interface{}{}
+		sessions := make([]map[string]interface{}, 0, len(c.sessions))
 		for i, ps := range c.sessions {
-			age := time.Since(ps.createdAt)
 			sessions = append(sessions, map[string]interface{}{
-				"id": i, "age": age.String(), "streams": ps.session.NumStreams(), "closed": ps.session.IsClosed(),
+				"id": i, "age": time.Since(ps.createdAt).String(), "streams": ps.session.NumStreams(), "closed": ps.session.IsClosed(),
 			})
 		}
 		c.sessMu.RUnlock()
 
-		paths := []map[string]interface{}{}
+		paths := make([]map[string]interface{}, 0, len(c.paths))
 		for i, p := range c.paths {
 			rtt := time.Duration(atomic.LoadInt64(&c.pathLatency[i]))
 			paths = append(paths, map[string]interface{}{
-				"index": i, "addr": p.Addr, "rtt": rtt.String(), "rtt_ms": float64(rtt) / 1e6,
+				"index": i, "addr": p.Addr, "rtt_ms": float64(rtt) / 1e6,
 			})
 		}
 
-		level := int(atomic.LoadInt32(&c.frameLevel))
 		resp["client"] = map[string]interface{}{
 			"sessions": sessions,
 			"paths":    paths,
 			"adaptive": map[string]interface{}{
-				"level": level, "size": frameSizes[level], "label": fmt.Sprintf("%dKB", frameSizes[level]/1024),
+				"level": atomic.LoadInt32(&c.frameLevel),
 			},
 		}
 	}
@@ -250,9 +248,7 @@ func handleLogsStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleConfigAPI(w http.ResponseWriter, r *http.Request) {
-	// Simple config path resolution
 	configPath := "/etc/picotun/" + dashState.mode + ".yaml"
-	// Fallback for older setups: server.yaml or client.yaml
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		if dashState.mode == "server" {
 			configPath = "/etc/picotun/server.yaml"
@@ -262,23 +258,23 @@ func handleConfigAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
-		body, _ := io.ReadAll(r.Body)
-		if len(body) > 0 {
-			// Write file
-			err := os.WriteFile(configPath, body, 0644)
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-			w.Write([]byte("saved"))
+		body, err := io.ReadAll(r.Body)
+		if err != nil || len(body) == 0 {
+			http.Error(w, "Invalid body", 400)
+			return
 		}
+		if err := os.WriteFile(configPath, body, 0644); err != nil {
+			http.Error(w, "Save failed: "+err.Error(), 500)
+			return
+		}
+		w.Write([]byte("saved"))
 		return
 	}
 
-	// GET
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(""))
 		return
 	}
 	w.Write(data)
