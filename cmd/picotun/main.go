@@ -13,7 +13,7 @@ import (
 	httpmux "github.com/amir6dev/rstunnel/PicoTun"
 )
 
-var version = "3.5.5"
+var version = "3.5.6"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")

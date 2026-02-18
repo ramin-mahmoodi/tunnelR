@@ -461,11 +461,14 @@ func startTrafficMonitor() {
 		dashState.lastBytesRecv = recv
 
 		// Update atomic speeds (prevent negative spikes on restart)
+		// Correct mapping:
+		// Server Sent = User Download (speedDown)
+		// Server Recv = User Upload (speedUp)
 		if diffSent >= 0 {
-			atomic.StoreInt64(&dashState.speedUp, diffSent)
+			atomic.StoreInt64(&dashState.speedDown, diffSent)
 		}
 		if diffRecv >= 0 {
-			atomic.StoreInt64(&dashState.speedDown, diffRecv)
+			atomic.StoreInt64(&dashState.speedUp, diffRecv)
 		}
 	}
 }
