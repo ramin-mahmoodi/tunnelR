@@ -43,18 +43,20 @@ type Server struct {
 	PSK     string
 	Verbose bool
 
-	sessMu   sync.RWMutex
-	sessions map[string]*smux.Session // keyed by remote addr
+	sessMu         sync.RWMutex
+	sessions       map[string]*smux.Session // keyed by remote addr
+	sessionCreated map[string]time.Time     // Age tracking for zombie cleanup
 }
 
 func NewServer(cfg *Config) *Server {
 	return &Server{
-		Config:   cfg,
-		Mimic:    &cfg.Mimic,
-		Obfs:     &cfg.Obfs,
-		PSK:      cfg.PSK,
-		Verbose:  cfg.Verbose,
-		sessions: make(map[string]*smux.Session),
+		Config:         cfg,
+		Mimic:          &cfg.Mimic,
+		Obfs:           &cfg.Obfs,
+		PSK:            cfg.PSK,
+		Verbose:        cfg.Verbose,
+		sessions:       make(map[string]*smux.Session),
+		sessionCreated: make(map[string]time.Time),
 	}
 }
 
@@ -287,6 +289,7 @@ func (s *Server) setSession(key string, sess *smux.Session) {
 	s.sessMu.Lock()
 	old := s.sessions[key]
 	s.sessions[key] = sess
+	s.sessionCreated[key] = time.Now()
 	s.sessMu.Unlock()
 	atomic.AddInt64(&GlobalStats.ActiveSessions, 1)
 	if old != nil && old != sess {
@@ -300,6 +303,7 @@ func (s *Server) clearSession(key string, sess *smux.Session) {
 	defer s.sessMu.Unlock()
 	if s.sessions[key] == sess {
 		delete(s.sessions, key)
+		delete(s.sessionCreated, key)
 		atomic.AddInt64(&GlobalStats.ActiveSessions, -1)
 	}
 }
@@ -343,9 +347,25 @@ func (s *Server) cleanupSessions(ctx context.Context) {
 			for key, sess := range s.sessions {
 				if sess.IsClosed() {
 					delete(s.sessions, key)
+					delete(s.sessionCreated, key)
 					atomic.AddInt64(&GlobalStats.ActiveSessions, -1)
 					if s.Verbose {
 						log.Printf("[CLEANUP] removed dead session %s", key)
+					}
+					continue
+				}
+
+				// Zombie Check: If session has 0 streams (idle) for > 3 minutes, kill it.
+				// This handles mobile clients that switch IPs leaving old connections 'open' but unused.
+				if created, ok := s.sessionCreated[key]; ok {
+					if sess.NumStreams() == 0 && time.Since(created) > 3*time.Minute {
+						sess.Close()
+						delete(s.sessions, key)
+						delete(s.sessionCreated, key)
+						atomic.AddInt64(&GlobalStats.ActiveSessions, -1)
+						if s.Verbose {
+							log.Printf("[CLEANUP] removed zombie session %s (age: %v)", key, time.Since(created))
+						}
 					}
 				}
 			}
