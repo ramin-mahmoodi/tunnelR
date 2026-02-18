@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ═══════════════════════════════════════════════════════════════
 
-SCRIPT_VERSION="3.1.3"
+SCRIPT_VERSION="3.2.0"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +22,7 @@ CONFIG_DIR="/etc/picotun"
 SYSTEMD_DIR="/etc/systemd/system"
 
 GITHUB_REPO="ramin-mahmoodi/tunnelR"
-LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
+LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
 
 # ───────────── Banner & Checks ─────────────
 
@@ -82,7 +82,7 @@ download_binary() {
     detect_arch
 
     echo -e "${CYAN}🔍 Fetching latest release...${NC}"
-    LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$LATEST_VERSION" ]; then
         echo -e "${YELLOW}⚠️  Could not fetch version, trying v1.8.8${NC}"
