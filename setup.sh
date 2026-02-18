@@ -314,13 +314,6 @@ install_server_auto() {
 
     parse_port_mappings
 
-    echo ""
-    read -p "Dashboard User [admin]: " DASH_USER
-    DASH_USER=${DASH_USER:-admin}
-    read -p "Dashboard Pass [admin]: " DASH_PASS
-    DASH_PASS=${DASH_PASS:-admin}
-    SESSION_SECRET=$(openssl rand -hex 16)
-
     # SSL cert for TLS transports
     CERT_FILE=""
     KEY_FILE=""
@@ -342,12 +335,7 @@ profile: "aggressive"
 verbose: true
 heartbeat: 2
 
-dashboard:
-  enabled: true
-  listen: "0.0.0.0:8080"
-  user: "${DASH_USER}"
-  pass: "${DASH_PASS}"
-  session_secret: "${SESSION_SECRET}"
+
 EOF
 
     if [ -n "$CERT_FILE" ]; then
@@ -404,6 +392,9 @@ http_mimic:
     - "Accept-Language: en-US,en;q=0.9"
     - "Accept-Encoding: gzip, deflate, br"
 EOF
+
+    # Default Dashboard (Disabled)
+    # Use 'Configure Dashboard' in menu to enable
 
     create_systemd_service "server"
 
@@ -476,12 +467,7 @@ install_client_auto() {
     read -p "Connection Pool Size [8]: " POOL_SIZE
     POOL_SIZE=${POOL_SIZE:-8}
 
-    echo ""
-    read -p "Dashboard User [admin]: " DASH_USER
-    DASH_USER=${DASH_USER:-admin}
-    read -p "Dashboard Pass [admin]: " DASH_PASS
-    DASH_PASS=${DASH_PASS:-admin}
-    SESSION_SECRET=$(openssl rand -hex 16)
+
 
 
     # Write config
@@ -542,12 +528,7 @@ http_mimic:
     - "Accept-Language: en-US,en;q=0.9"
     - "Accept-Encoding: gzip, deflate, br"
 
-dashboard:
-  enabled: true
-  listen: "0.0.0.0:8080"
-  user: "${DASH_USER}"
-  pass: "${DASH_PASS}"
-  session_secret: "${SESSION_SECRET}"
+
 EOF
 
     create_systemd_service "client"
@@ -646,12 +627,7 @@ install_server_manual() {
     read -p "Verbose logging? [y/N]: " VE
     [[ "$VE" =~ ^[Yy]$ ]] && VERBOSE="true" || VERBOSE="false"
 
-    echo ""
-    read -p "Dashboard User [admin]: " DASH_USER
-    DASH_USER=${DASH_USER:-admin}
-    read -p "Dashboard Pass [admin]: " DASH_PASS
-    DASH_PASS=${DASH_PASS:-admin}
-    SESSION_SECRET=$(openssl rand -hex 16)
+
 
     mkdir -p "$CONFIG_DIR"
     CONFIG_FILE="$CONFIG_DIR/server.yaml"
@@ -709,12 +685,7 @@ advanced:
   max_connections: 5000
 
 
-dashboard:
-  enabled: true
-  listen: "0.0.0.0:8080"
-  user: "${DASH_USER}"
-  pass: "${DASH_PASS}"
-  session_secret: "${SESSION_SECRET}"
+
 EOF
 
     create_systemd_service "server"
@@ -764,6 +735,58 @@ install_client() {
     install_client_auto
 }
 
+# ───────────── Dashboard Config ─────────────
+
+configure_dashboard() {
+    local MODE=$1
+    local SVC="picotun-${MODE}"
+    local CFG="$CONFIG_DIR/${MODE}.yaml"
+
+    [ ! -f "$CFG" ] && { echo -e "${RED}Config not found${NC}"; return; }
+
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}     DASHBOARD CONFIGURATION${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo ""
+
+    read -p "Enable Dashboard? [y/N]: " EN
+    
+    # Always strip existing dashboard config first
+    sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
+
+    if [[ "$EN" =~ ^[Yy]$ ]]; then
+        echo ""
+        read -p "Dashboard User [admin]: " DASH_USER
+        DASH_USER=${DASH_USER:-admin}
+        read -p "Dashboard Pass [admin]: " DASH_PASS
+        DASH_PASS=${DASH_PASS:-admin}
+        SESSION_SECRET=$(openssl rand -hex 16)
+
+        cat >> "$CFG" << EOF
+
+# DASHBOARD-CONFIG-START
+dashboard:
+  enabled: true
+  listen: "0.0.0.0:8080"
+  user: "${DASH_USER}"
+  pass: "${DASH_PASS}"
+  session_secret: "${SESSION_SECRET}"
+EOF
+        echo -e "${GREEN}✓ Dashboard configured.${NC}"
+    else
+        echo -e "${YELLOW}Dashboard disabled (config removed).${NC}"
+    fi
+
+    echo ""
+    read -p "Restart service to apply? [Y/n]: " r
+    if [[ ! "$r" =~ ^[Nn]$ ]]; then
+        systemctl restart "$SVC"
+        echo -e "${GREEN}✓ Service restarted${NC}"
+    fi
+    service_management "$MODE"
+}
+
 # ───────────── Service Management ─────────────
 
 service_management() {
@@ -790,6 +813,7 @@ service_management() {
     echo "  4) Status         8) View Config"
     echo "                    9) Edit Config"
     echo "                   10) Delete Config & Service"
+    echo "                   11) Configure Dashboard"
     echo ""
     echo "  0) Back"
     echo ""
@@ -823,6 +847,7 @@ service_management() {
                 echo -e "${GREEN}✓ Deleted${NC}"; sleep 1
             fi
             settings_menu ;;
+        11) configure_dashboard "$MODE" ;;
         0) settings_menu ;;
         *) service_management "$MODE" ;;
     esac
