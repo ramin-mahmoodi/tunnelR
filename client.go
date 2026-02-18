@@ -15,6 +15,9 @@ import (
 	"github.com/xtaci/smux"
 )
 
+// Adaptive FrameSize levels: start small (DPI-safe) → ramp up for speed
+var frameSizes = [5]int{2048, 4096, 8192, 16384, 32768}
+
 // sessionMaxAge defines how long a session can live before being recycled.
 // Recycling prevents ISP/DPI throttling of long-lived connections.
 const sessionMaxAge = 20 * time.Minute
@@ -40,6 +43,15 @@ type Client struct {
 	sessMu   sync.RWMutex
 	sessions []*pooledSession // connection pool with age tracking
 	sessIdx  uint64           // atomic round-robin index
+
+	// Warm Standby: pre-built session ready for instant promotion
+	standbyCh chan *smux.Session
+
+	// Adaptive FrameSize: 0-4 index into frameSizes[]
+	frameLevel int32 // atomic
+
+	// Latency-Based Routing: RTT per path in nanoseconds
+	pathLatency []int64 // atomic per-element
 }
 
 func NewClient(cfg *Config) *Client {
@@ -55,12 +67,14 @@ func NewClient(cfg *Config) *Client {
 	}
 
 	return &Client{
-		cfg:     cfg,
-		mimic:   &cfg.Mimic,
-		obfs:    &cfg.Obfs,
-		psk:     cfg.PSK,
-		paths:   paths,
-		verbose: cfg.Verbose,
+		cfg:         cfg,
+		mimic:       &cfg.Mimic,
+		obfs:        &cfg.Obfs,
+		psk:         cfg.PSK,
+		paths:       paths,
+		verbose:     cfg.Verbose,
+		standbyCh:   make(chan *smux.Session, 1),
+		pathLatency: make([]int64, len(paths)),
 	}
 }
 
@@ -88,6 +102,15 @@ func (c *Client) Start() error {
 		sc.KeepAliveInterval, sc.KeepAliveTimeout, sc.MaxFrameSize)
 
 	go c.sessionHealthCheck()
+	go c.standbyManager()
+	go c.latencyProber()
+
+	// Set initial frame level from config
+	if c.cfg.Smux.FrameSize >= 32768 {
+		atomic.StoreInt32(&c.frameLevel, 4)
+	} else {
+		atomic.StoreInt32(&c.frameLevel, 0)
+	}
 
 	for i := 0; i < poolSize; i++ {
 		go c.poolWorker(i)
@@ -125,9 +148,9 @@ func (c *Client) Start() error {
 }
 
 // poolWorker — one goroutine that cycles through paths on failure.
-// After maxFailsBeforeSwitch consecutive short-lived failures, switches to next path.
+// Uses latency-based routing to pick the best path, with failover on consecutive failures.
 func (c *Client) poolWorker(id int) {
-	pathIdx := 0
+	pathIdx := c.bestPath()
 	failCount := 0
 
 	for {
@@ -137,6 +160,34 @@ func (c *Client) poolWorker(id int) {
 			retryInterval = 3 * time.Second
 		}
 
+		// Try warm standby first for instant recovery
+		reused := false
+		select {
+		case standby := <-c.standbyCh:
+			if !standby.IsClosed() {
+				log.Printf("[POOL#%d] using warm standby session", id)
+				c.addSession(standby)
+				// Block accepting streams until session dies
+				for {
+					stream, err := standby.AcceptStream()
+					if err != nil {
+						c.removeSession(standby)
+						standby.Close()
+						break
+					}
+					go c.handleReverseStream(stream)
+				}
+				reused = true
+			}
+		default:
+			// No standby available — normal connect
+		}
+
+		if reused {
+			failCount = 0
+			continue
+		}
+
 		connStart := time.Now()
 		err := c.connectAndServe(id, path)
 		connDuration := time.Since(connStart)
@@ -144,9 +195,10 @@ func (c *Client) poolWorker(id int) {
 		if err != nil {
 			alive := c.sessionCount()
 
-			// Only count short-lived failures as "blocked"
+			// Adaptive FrameSize: short-lived → decrease level
 			if connDuration < 30*time.Second {
 				failCount++
+				c.adjustFrameLevel(-1)
 			} else {
 				failCount = 0
 			}
@@ -154,7 +206,12 @@ func (c *Client) poolWorker(id int) {
 			// Switch to next path after N consecutive short failures
 			if failCount >= maxFailsBeforeSwitch && len(c.paths) > 1 {
 				oldIdx := pathIdx
-				pathIdx = (pathIdx + 1) % len(c.paths)
+				// Try latency-based selection first
+				newIdx := c.bestPath()
+				if newIdx == pathIdx {
+					newIdx = (pathIdx + 1) % len(c.paths)
+				}
+				pathIdx = newIdx
 				failCount = 0
 				log.Printf("[POOL#%d] path[%d] seems blocked → switching to path[%d] %s",
 					id, oldIdx, pathIdx, c.paths[pathIdx].Addr)
@@ -223,8 +280,10 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 	host, port := parseAddr(addr, transport)
 	dialAddr := net.JoinHostPort(host, port)
 
+	level := atomic.LoadInt32(&c.frameLevel)
 	if c.verbose {
-		log.Printf("[POOL#%d] connecting to %s (%s)", id, dialAddr, transport)
+		log.Printf("[POOL#%d] connecting to %s (%s) frame=%dB",
+			id, dialAddr, transport, frameSizes[level])
 	}
 
 	// ① Dial TCP/TLS connection
@@ -265,8 +324,9 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 		smuxConn = NewCompressedConn(ec, c.cfg.Compression)
 	}
 
-	// ④ smux session
+	// ④ smux session — uses adaptive frame size
 	sc := buildSmuxConfig(c.cfg)
+	sc.MaxFrameSize = frameSizes[level]
 	sess, err := smux.Client(smuxConn, sc)
 	if err != nil {
 		smuxConn.Close()
@@ -275,18 +335,176 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 
 	c.addSession(sess)
 	count := c.sessionCount()
-	log.Printf("[POOL#%d] connected to %s (pool: %d)", id, dialAddr, count)
+	log.Printf("[POOL#%d] connected to %s (pool: %d, frame: %dB)",
+		id, dialAddr, count, frameSizes[level])
 
 	// ⑤ Accept reverse streams — blocks until session dies
+	connStart := time.Now()
 	for {
 		stream, err := sess.AcceptStream()
 		if err != nil {
 			c.removeSession(sess)
 			sess.Close()
+			// Adaptive: if session lived > 2min, increase frame level
+			if time.Since(connStart) > 2*time.Minute {
+				c.adjustFrameLevel(1)
+			}
 			return fmt.Errorf("session closed: %w", err)
 		}
 		go c.handleReverseStream(stream)
 	}
+}
+
+// adjustFrameLevel safely changes the adaptive frame level by delta.
+func (c *Client) adjustFrameLevel(delta int32) {
+	for {
+		old := atomic.LoadInt32(&c.frameLevel)
+		new_ := old + delta
+		if new_ < 0 {
+			new_ = 0
+		}
+		if new_ > 4 {
+			new_ = 4
+		}
+		if new_ == old {
+			return
+		}
+		if atomic.CompareAndSwapInt32(&c.frameLevel, old, new_) {
+			log.Printf("[ADAPTIVE] frame %dB→%dB (level %d→%d)",
+				frameSizes[old], frameSizes[new_], old, new_)
+			return
+		}
+	}
+}
+
+// dialSession establishes a full session to the best path (used by standbyManager).
+func (c *Client) dialSession() (*smux.Session, error) {
+	pathIdx := c.bestPath()
+	path := c.paths[pathIdx]
+	transport := strings.ToLower(strings.TrimSpace(path.Transport))
+	if transport == "" {
+		transport = c.cfg.Transport
+	}
+	addr := strings.TrimSpace(path.Addr)
+	dialTimeout := time.Duration(path.DialTimeout) * time.Second
+	if dialTimeout <= 0 {
+		dialTimeout = 10 * time.Second
+	}
+	host, port := parseAddr(addr, transport)
+	dialAddr := net.JoinHostPort(host, port)
+
+	var conn net.Conn
+	var err error
+	switch transport {
+	case "httpsmux", "wssmux":
+		conn, err = c.dialFragmentedTLS(dialAddr, dialTimeout)
+	case "httpmux", "wsmux":
+		conn, err = DialFragmented(dialAddr, c.fragmentCfg(), dialTimeout)
+	default:
+		conn, err = net.DialTimeout("tcp", dialAddr, dialTimeout)
+	}
+	if err != nil {
+		return nil, err
+	}
+	c.setTCPOptions(conn)
+
+	conn, err = ClientHandshake(conn, c.mimic)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	ec, err := NewEncryptedConn(conn, c.psk, c.obfs)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	var smuxConn net.Conn = ec
+	if c.cfg.Compression != "" && c.cfg.Compression != "none" {
+		smuxConn = NewCompressedConn(ec, c.cfg.Compression)
+	}
+
+	sc := buildSmuxConfig(c.cfg)
+	level := atomic.LoadInt32(&c.frameLevel)
+	sc.MaxFrameSize = frameSizes[level]
+	sess, err := smux.Client(smuxConn, sc)
+	if err != nil {
+		smuxConn.Close()
+		return nil, err
+	}
+	return sess, nil
+}
+
+// standbyManager keeps one pre-built session ready for instant promotion.
+func (c *Client) standbyManager() {
+	// Wait for primary pool to establish first
+	time.Sleep(5 * time.Second)
+	for {
+		sess, err := c.dialSession()
+		if err != nil {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		log.Printf("[STANDBY] warm session ready")
+		// Block until someone consumes the standby
+		c.standbyCh <- sess
+		// Small delay before building next standby
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// latencyProber periodically measures TCP RTT to each path.
+func (c *Client) latencyProber() {
+	time.Sleep(3 * time.Second) // initial delay
+	for {
+		for i, path := range c.paths {
+			addr := strings.TrimSpace(path.Addr)
+			transport := strings.ToLower(strings.TrimSpace(path.Transport))
+			if transport == "" {
+				transport = c.cfg.Transport
+			}
+			host, port := parseAddr(addr, transport)
+			dialAddr := net.JoinHostPort(host, port)
+
+			start := time.Now()
+			conn, err := net.DialTimeout("tcp", dialAddr, 5*time.Second)
+			if err != nil {
+				atomic.StoreInt64(&c.pathLatency[i], int64(999*time.Second))
+				continue
+			}
+			rtt := time.Since(start)
+			conn.Close()
+			atomic.StoreInt64(&c.pathLatency[i], int64(rtt))
+		}
+
+		if c.verbose && len(c.paths) > 1 {
+			msg := "[LATENCY]"
+			for i := range c.paths {
+				rtt := time.Duration(atomic.LoadInt64(&c.pathLatency[i]))
+				msg += fmt.Sprintf(" path[%d]=%v", i, rtt.Round(time.Millisecond))
+			}
+			log.Println(msg)
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
+// bestPath returns the index of the path with lowest measured RTT.
+func (c *Client) bestPath() int {
+	if len(c.paths) <= 1 {
+		return 0
+	}
+	best := 0
+	bestRTT := atomic.LoadInt64(&c.pathLatency[0])
+	for i := 1; i < len(c.paths); i++ {
+		rtt := atomic.LoadInt64(&c.pathLatency[i])
+		if rtt > 0 && (bestRTT == 0 || rtt < bestRTT) {
+			best = i
+			bestRTT = rtt
+		}
+	}
+	return best
 }
 
 // setTCPOptions applies keep-alive and no-delay options to TCP connections.
