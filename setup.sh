@@ -795,15 +795,20 @@ install_dashboard_assets() {
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <aside class="w-64 flex-shrink-0 bg-background-light dark:bg-[#0a0c10] border-r border-slate-200 dark:border-slate-800 flex flex-col hidden md:flex">
-            <div class="p-6 flex items-center gap-3">
-                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                    <span class="material-symbols-outlined">subway</span>
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-background-light dark:bg-[#0a0c10] border-r border-slate-200 dark:border-slate-800 flex flex-col transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out md:flex">
+            <div class="p-6 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                        <span class="material-symbols-outlined">subway</span>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight">TunnelR <span class="text-primary">Pro</span></h1>
+                        <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.3.0</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight">TunnelR <span class="text-primary">Pro</span></h1>
-                    <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.3.0</p>
-                </div>
+                <button class="md:hidden text-slate-500" onclick="toggleSidebar()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
             <nav class="flex-1 px-4 space-y-1">
                 <a onclick="setView('dash')" id="nav-dash" class="nav-item active flex items-center gap-3 px-3 py-2.5 bg-primary/10 text-primary rounded-lg font-medium transition-colors cursor-pointer">
@@ -825,12 +830,18 @@ install_dashboard_assets() {
             </nav>
         </aside>
 
+        <!-- Overlay for mobile -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden"></div>
+
         <!-- Main Content -->
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="h-16 flex-shrink-0 flex items-center justify-between px-8 bg-background-light dark:bg-background-dark/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md z-10">
+            <header class="h-16 flex-shrink-0 flex items-center justify-between px-4 md:px-8 bg-background-light dark:bg-background-dark/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md z-10">
                 <div class="flex items-center gap-4">
-                    <h2 class="text-xl font-bold tracking-tight" id="page-title">Dashboard Overview</h2>
-                    <span id="health-badge" class="bg-accent-green/10 text-accent-green px-2.5 py-0.5 rounded-full text-xs font-bold border border-accent-green/20">System Online</span>
+                    <button class="md:hidden p-2 text-slate-500" onclick="toggleSidebar()">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h2 class="text-lg md:text-xl font-bold tracking-tight" id="page-title">Dashboard Overview</h2>
+                    <span id="health-badge" class="bg-accent-green/10 text-accent-green px-2.5 py-0.5 rounded-full text-[10px] md:text-xs font-bold border border-accent-green/20">System Online</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <button class="p-2 text-slate-500 hover:text-primary transition-colors" onclick="location.reload()">
@@ -839,7 +850,7 @@ install_dashboard_assets() {
                 </div>
             </header>
 
-            <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
                 <!-- DASHBOARD VIEW -->
                 <div id="view-dash" class="view active">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -940,6 +951,22 @@ install_dashboard_assets() {
         $('#page-title').innerText = titles[id];
         if(id === 'logs') initLogs();
         if(id === 'settings') loadConfig();
+        if(window.innerWidth < 768) toggleSidebar(); 
+    }
+
+    function toggleSidebar() {
+        const s = $('#sidebar');
+        const o = $('#sidebar-overlay');
+        const open = s.classList.contains('translate-x-0');
+        if(open) {
+            s.classList.remove('translate-x-0');
+            s.classList.add('-translate-x-full');
+            o.classList.add('hidden');
+        } else {
+            s.classList.add('translate-x-0');
+            s.classList.remove('-translate-x-full');
+            o.classList.remove('hidden');
+        }
     }
 
     function initChart() {
@@ -1002,10 +1029,92 @@ install_dashboard_assets() {
         $('#sessions-table').innerHTML = html || '<tr><td colspan="4" class="p-8 text-center text-slate-600">No peers connected</td></tr>';
     }
 
-    // ... (rest of functions) ...
+    function initLogs() {
+        if(logEventSource) return;
+        $('#logs-out').innerHTML = '';
+        logEventSource = new EventSource('/api/logs/stream');
+        logEventSource.onmessage = e => {
+            const d = document.createElement('div');
+            d.className = 'log-item py-0.5';
+            d.innerText = e.data;
+            const t = e.data.toLowerCase();
+            if(t.includes('err') || t.includes('fail')) d.classList.add('text-red-400', 'is-error');
+            else if(t.includes('warn')) d.classList.add('text-yellow-400', 'is-warn');
+            $('#logs-out').appendChild(d);
+            if($('#logs-out').children.length > 500) $('#logs-out').removeChild($('#logs-out').firstChild);
+            $('#logs-out').scrollTop = $('#logs-out').scrollHeight;
+            runLogFilter();
+        };
+    }
+
+    function runLogFilter() {
+        const val = $('#log-filter').value;
+        document.querySelectorAll('.log-item').forEach(el => {
+            if(val === 'all') el.style.display = 'block';
+            else if(val === 'error') el.style.display = el.classList.contains('is-error') ? 'block' : 'none';
+            else if(val === 'warn') el.style.display = (el.classList.contains('is-warn') || el.classList.contains('is-error')) ? 'block' : 'none';
+        });
+    }
+
+    async function loadConfig() {
+        try {
+            const r = await fetch('/api/config');
+            if(r.status === 401) { location.href = '/login'; return; }
+            const txt = await r.text();
+            $('#config-editor').value = txt;
+            if(typeof jsyaml !== 'undefined') {
+                currentConfig = jsyaml.load(txt);
+                $('#f-listen').value = currentConfig.listen || '';
+                $('#f-psk').value = currentConfig.psk || '';
+                $('#f-profile').value = currentConfig.profile || 'balanced';
+                $('#f-transport').value = currentConfig.transport || '';
+            }
+        } catch(e) { console.warn('Config load failed:', e); }
+    }
+
+    function toggleEditMode() {
+        const adv = $('#config-editor').classList.contains('hidden');
+        if(adv) {
+            $('#config-editor').classList.remove('hidden');
+            $('#cfg-form').classList.add('hidden');
+            $('#toggle-btn').innerText = 'Form Editor';
+        } else {
+            $('#config-editor').classList.add('hidden');
+            $('#cfg-form').classList.remove('hidden');
+            $('#toggle-btn').innerText = 'Advanced Editor';
+            loadConfig();
+        }
+    }
+
+    async function saveConfig() {
+        if(!confirm('Save and Restart?')) return;
+        let yaml;
+        try {
+            if($('#config-editor').classList.contains('hidden')) {
+                currentConfig.listen = $('#f-listen').value;
+                currentConfig.psk = $('#f-psk').value;
+                currentConfig.profile = $('#f-profile').value;
+                currentConfig.transport = $('#f-transport').value;
+                if(typeof jsyaml === 'undefined') throw new Error('js-yaml not loaded');
+                yaml = jsyaml.dump(currentConfig);
+            } else {
+                yaml = $('#config-editor').value;
+            }
+            const r = await fetch('/api/config', {method:'POST', body:yaml});
+            if(r.status === 401) return location.href = '/login';
+            if(!r.ok) throw new Error('Save failed');
+            await fetch('/api/restart', {method:'POST'});
+            alert('Service restarting...');
+            setTimeout(() => location.reload(), 3000);
+        } catch(e) { alert('Error: ' + e.message); }
+    }
 
     setInterval(() => {
-        fetch('/api/stats').then(r => r.json()).then(data => {
+        fetch('/api/stats').then(r => {
+            if(r.status === 401) location.href = '/login'; 
+            if(!r.ok) throw new Error(r.status);
+            return r.json();
+        }).then(data => {
             $('#health-badge').innerText = 'System Online';
             $('#health-badge').className = 'bg-accent-green/10 text-accent-green px-2.5 py-0.5 rounded-full text-xs font-bold border border-accent-green/20';
             updateUI(data);

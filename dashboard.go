@@ -168,11 +168,14 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 		resp["ping_ms"] = float64(lat) / 1e6
 	}
 
-	if dashState.server != nil {
+	if dashState.server != nil && dashState.server.sessions != nil {
 		s := dashState.server
 		s.sessMu.RLock()
 		sessions := make([]map[string]interface{}, 0, len(s.sessions))
 		for addr, sess := range s.sessions {
+			if sess == nil {
+				continue
+			}
 			sessions = append(sessions, map[string]interface{}{
 				"addr": addr, "streams": sess.NumStreams(), "closed": sess.IsClosed(),
 			})
@@ -189,6 +192,9 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 		c.sessMu.RLock()
 		sessions := make([]map[string]interface{}, 0, len(c.sessions))
 		for i, ps := range c.sessions {
+			if ps == nil || ps.session == nil {
+				continue
+			}
 			sessions = append(sessions, map[string]interface{}{
 				"id": i, "age": time.Since(ps.createdAt).String(), "streams": ps.session.NumStreams(), "closed": ps.session.IsClosed(),
 			})
