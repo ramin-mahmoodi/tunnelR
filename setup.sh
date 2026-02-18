@@ -7,14 +7,45 @@
 
 SCRIPT_VERSION="3.4.6"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-NC='\033[0m'
+
+# Colors & Styling
+RED='[0;31m'
+GREEN='[0;32m'
+YELLOW='[1;33m'
+BLUE='[0;34m'
+PURPLE='[0;35m'
+CYAN='[0;36m'
+WHITE='[1;37m'
+BOLD='[1m'
+NC='[0m'
+
+# Modern Separators
+draw_line() {
+    printf "${CYAN}â”€%.0s${NC}" {1..60}
+    echo ""
+}
+
+draw_header() {
+    echo ""
+    printf "${BG_BLUE}${WHITE}  %s  ${NC}
+" "$1"
+    draw_line
+}
+
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\'
+    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf ""
+    done
+    printf "    "
+}
+
 
 BINARY_NAME="picotun"
 INSTALL_DIR="/usr/local/bin"
@@ -27,17 +58,21 @@ LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 
 # ------------------------- Banner & Checks -------------------------
 
+
 show_banner() {
     clear
     echo -e "${CYAN}"
-    echo "  +=======================================+"
-    echo "  |           TunnelR (PicoTun)           |"
-    echo "  |          Script v${SCRIPT_VERSION}          |"
-    echo "  +=======================================+"
+    echo "   ____  _           _____              "
+    echo "  |  _ \(_) ___ ___ |_   _|   _ _ __    "
+    echo "  | |_) | |/ __/ _ \  | || | | | '_ \   "
+    echo "  |  __/| | (_| (_) | | || |_| | | | |  "
+    echo "  |_|   |_|\___\___/  |_| \__,_|_| |_|  "
     echo -e "${NC}"
-    echo -e "  ${PURPLE}GitHub: github.com/${GITHUB_REPO}${NC}"
+    echo -e "${PURPLE}   â–¶ Dagger-Compatible Reverse Tunnel v${SCRIPT_VERSION}${NC}"
+    echo -e "${BLUE}   â–¶ github.com/${GITHUB_REPO}${NC}"
     echo ""
 }
+
 
 check_root() {
     if [[ $EUID -ne 0 ]]; then
@@ -77,42 +112,49 @@ get_current_version() {
 
 # ------------------------- Download Binary -------------------------
 
+
 download_binary() {
-    echo -e "${YELLOW}â¬‡ï¸  Downloading PicoTun...${NC}"
+    draw_header "Downloading PicoTun Core"
     mkdir -p "$INSTALL_DIR"
     detect_arch
 
-    echo -e "${CYAN}ðŸ” Fetching latest release...${NC}"
-    # Parse tag_name from the specific 'latest' release object
+    echo -e "  â•¯ Checking latest release..."
     LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$LATEST_VERSION" ]; then
-        echo -e "${YELLOW}âš ï¸  Could not fetch version, trying v1.8.8${NC}"
+        echo -e "${YELLOW}  ! API Rate Limit / Network Error${NC} -> Fallback v1.8.8"
         LATEST_VERSION="v1.8.8"
     fi
 
     TAR_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/picotun-${LATEST_VERSION}-linux-${ARCH}.tar.gz"
-    echo -e "${CYAN}ðŸ“¦ Version: ${GREEN}${LATEST_VERSION}${CYAN} (${ARCH})${NC}"
+    echo -e "  â•¯ Version: ${GREEN}${LATEST_VERSION}${NC} (${ARCH})"
 
     # Backup
     [ -f "$INSTALL_DIR/$BINARY_NAME" ] && cp "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/${BINARY_NAME}.bak"
 
     TMP_DIR=$(mktemp -d)
-    if wget -q --show-progress "$TAR_URL" -O "$TMP_DIR/picotun.tar.gz"; then
+    
+    # Download with animation
+    echo -ne "  â•¯ Downloading... "
+    (wget -q "$TAR_URL" -O "$TMP_DIR/picotun.tar.gz") &
+    spinner $!
+    echo -e "${GREEN}Done${NC}"
+
+    if [ -f "$TMP_DIR/picotun.tar.gz" ]; then
         tar -xzf "$TMP_DIR/picotun.tar.gz" -C "$TMP_DIR"
         mv "$TMP_DIR/picotun" "$INSTALL_DIR/$BINARY_NAME"
         chmod +x "$INSTALL_DIR/$BINARY_NAME"
         rm -rf "$TMP_DIR"
         rm -f "$INSTALL_DIR/${BINARY_NAME}.bak"
-        echo -e "${GREEN}âœ“ PicoTun ${LATEST_VERSION} installed${NC}"
+        echo -e "\n${GREEN}  âœ“ Installation Successful${NC}"
     else
         rm -rf "$TMP_DIR"
-        # Restore backup
         [ -f "$INSTALL_DIR/${BINARY_NAME}.bak" ] && mv "$INSTALL_DIR/${BINARY_NAME}.bak" "$INSTALL_DIR/$BINARY_NAME"
-        echo -e "${RED}âœ– Download failed${NC}"
+        echo -e "\n${RED}  âœ– Download Failed${NC}"
         exit 1
     fi
 }
+
 
 # ----------------------------------------------------------------
 
@@ -204,9 +246,9 @@ parse_port_mappings() {
     COUNT=0
 
     echo ""
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}         PORT MAPPINGS${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
     echo -e "${YELLOW}Format:${NC}"
     echo -e "  ${GREEN}Single${NC}:    8443              â†’ 8443â†’8443"
@@ -355,9 +397,9 @@ EOF
 
 install_server_auto() {
     echo ""
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}   AUTOMATIC SERVER CONFIGURATION${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
 
     read -p "Tunnel Port [2020]: " LISTEN_PORT
@@ -502,9 +544,9 @@ EOF
 
 install_client_auto() {
     echo ""
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}   AUTOMATIC CLIENT CONFIGURATION${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
 
     while true; do
@@ -634,9 +676,9 @@ EOF
 
 install_server_manual() {
     echo ""
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}   MANUAL SERVER CONFIGURATION${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
 
     echo -e "${YELLOW}Transport:${NC}"
@@ -780,9 +822,9 @@ EOF
 
 install_server() {
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}        SERVER INSTALLATION${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
     echo "  1) Automatic - Optimized (Recommended)"
     echo "  2) Manual - Custom settings"
@@ -795,9 +837,9 @@ install_server() {
 
 install_client() {
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}        CLIENT INSTALLATION${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
     install_client_auto
 }
@@ -1366,9 +1408,9 @@ EOF
 
 dashboard_menu() {
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}     DASHBOARD MANAGEMENT${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
 
     # Detect installed modes
@@ -1484,9 +1526,9 @@ service_management() {
     local CFG="$CONFIG_DIR/${MODE}.yaml"
 
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}      ${MODE^^} MANAGEMENT${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
 
     # Status
     if systemctl is-active "$SVC" &>/dev/null; then
@@ -1544,9 +1586,9 @@ service_management() {
 
 settings_menu() {
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}           SETTINGS${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
     echo "  1) Manage Server"
     echo "  2) Manage Client"
@@ -1566,9 +1608,9 @@ settings_menu() {
 
 update_binary() {
     show_banner
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo -e "${CYAN}         UPDATE PICOTUN${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_line
     echo ""
 
     CUR=$(get_current_version)
@@ -1635,27 +1677,26 @@ uninstall() {
 
 # ----------------------------------------------------------------
 
+
 main_menu() {
     show_banner
-
     CUR=$(get_current_version)
-    [ "$CUR" != "not-installed" ] && echo -e "  ${CYAN}Version: ${GREEN}${CUR}${NC}\n"
+    [ "$CUR" != "not-installed" ] && echo -e "   Current Version: ${GREEN}${CUR}${NC}\n"
 
-    echo -e "${CYAN}--------------------------------------------------${NC}"
-    echo -e "${CYAN}           MAIN MENU${NC}"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
+    draw_header "MAIN MENU"
+    
+    printf "  ${CYAN}1)${NC} Install Server ${Purple}(Iran)${NC}\n"
+    printf "  ${CYAN}2)${NC} Install Client ${PURPLE}(Kharej)${NC}\n"
+    printf "  -----------------------------\n"
+    printf "  ${CYAN}3)${NC} Dashboard Management\n"
+    printf "  ${CYAN}4)${NC} Service Settings\n"
+    printf "  ${CYAN}5)${NC} System Optimizer\n"
+    printf "  ${CYAN}6)${NC} Update PicoTun\n"
+    printf "  ${CYAN}7)${NC} Uninstall\n"
     echo ""
-    echo "  1) Install Server (Iran)"
-    echo "  2) Install Client (Kharej)"
-    echo "  3) Dashboard Panel (Install/Uninstall)"
-    echo "  4) Settings (Manage Services)"
-    echo "  5) System Optimizer"
-    echo "  6) Update PicoTun"
-    echo "  7) Uninstall"
+    printf "  ${RED}0)${NC} Exit\n"
     echo ""
-    echo "  0) Exit"
-    echo ""
-    read -p "Choice: " c
+    read -p "  Select option: " c
 
     case $c in
         1) install_server ;;
@@ -1669,6 +1710,7 @@ main_menu() {
         *) main_menu ;;
     esac
 }
+
 
 # ----------------------------------------------------------------
 

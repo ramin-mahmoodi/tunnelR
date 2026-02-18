@@ -111,6 +111,8 @@ download_binary() {
     fi
 }
 '''
+# Escape backslashes for re.sub
+new_download = new_download.replace('\\', '\\\\')
 content = re.sub(r"download_binary\(\) \{.*?^\}", new_download, content, flags=re.DOTALL|re.MULTILINE)
 
 # 4. NEW MENUS
@@ -148,6 +150,7 @@ main_menu() {
     esac
 }
 '''
+new_main_menu = new_main_menu.replace('\\', '\\\\')
 content = re.sub(r"main_menu\(\) \{.*?^\}", new_main_menu, content, flags=re.DOTALL|re.MULTILINE)
 
 # 5. Fix corrupted borders globally
