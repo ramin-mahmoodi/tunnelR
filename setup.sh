@@ -333,7 +333,12 @@ transport: "${TRANSPORT}"
 psk: "${PSK}"
 profile: "aggressive"
 verbose: true
+verbose: true
 heartbeat: 2
+
+dashboard:
+  enabled: true
+  listen: "0.0.0.0:8080"
 EOF
 
     if [ -n "$CERT_FILE" ]; then
@@ -398,7 +403,18 @@ EOF
     [[ ! "$opt" =~ ^[Nn]$ ]] && optimize_system
 
     systemctl start picotun-server
+    systemctl start picotun-server
     systemctl enable picotun-server 2>/dev/null
+
+    # Firewall
+    if command -v ufw &>/dev/null; then
+        ufw allow ${LISTEN_PORT}/tcp >/dev/null 2>&1
+        ufw allow 8080/tcp >/dev/null 2>&1
+    elif command -v firewall-cmd &>/dev/null; then
+        firewall-cmd --permanent --add-port=${LISTEN_PORT}/tcp >/dev/null 2>&1
+        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --reload >/dev/null 2>&1
+    fi
 
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════${NC}"
@@ -509,6 +525,10 @@ http_mimic:
   custom_headers:
     - "Accept-Language: en-US,en;q=0.9"
     - "Accept-Encoding: gzip, deflate, br"
+
+dashboard:
+  enabled: true
+  listen: "0.0.0.0:8080"
 EOF
 
     create_systemd_service "client"
@@ -519,6 +539,14 @@ EOF
 
     systemctl start picotun-client
     systemctl enable picotun-client 2>/dev/null
+
+    # Firewall (if needed for dashboard)
+    if command -v ufw &>/dev/null; then
+        ufw allow 8080/tcp >/dev/null 2>&1
+    elif command -v firewall-cmd &>/dev/null; then
+        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --reload >/dev/null 2>&1
+    fi
 
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════${NC}"
@@ -608,7 +636,11 @@ transport: "${TRANSPORT}"
 psk: "${PSK}"
 profile: "${PROFILE}"
 verbose: ${VERBOSE}
-EOF
+verbose: ${VERBOSE}
+
+dashboard:
+  enabled: true
+  listen: "0.0.0.0:8080"
 
     [ -n "$CERT_FILE" ] && cat >> "$CONFIG_FILE" << EOF
 
@@ -650,11 +682,25 @@ advanced:
   tcp_nodelay: true
   tcp_keepalive: 10
   max_connections: 5000
+
+dashboard:
+  enabled: true
+  listen: "0.0.0.0:8080"
 EOF
 
     create_systemd_service "server"
     systemctl start picotun-server
     systemctl enable picotun-server 2>/dev/null
+
+    # Firewall
+    if command -v ufw &>/dev/null; then
+        ufw allow ${LISTEN_PORT}/tcp >/dev/null 2>&1
+        ufw allow 8080/tcp >/dev/null 2>&1
+    elif command -v firewall-cmd &>/dev/null; then
+        firewall-cmd --permanent --add-port=${LISTEN_PORT}/tcp >/dev/null 2>&1
+        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --reload >/dev/null 2>&1
+    fi
 
     echo ""
     echo -e "${GREEN}✓ Server installed! Port=${LISTEN_PORT} Transport=${TRANSPORT}${NC}"
