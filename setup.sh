@@ -314,6 +314,13 @@ install_server_auto() {
 
     parse_port_mappings
 
+    echo ""
+    read -p "Dashboard User [admin]: " DASH_USER
+    DASH_USER=${DASH_USER:-admin}
+    read -p "Dashboard Pass [admin]: " DASH_PASS
+    DASH_PASS=${DASH_PASS:-admin}
+    SESSION_SECRET=$(openssl rand -hex 16)
+
     # SSL cert for TLS transports
     CERT_FILE=""
     KEY_FILE=""
@@ -338,6 +345,9 @@ heartbeat: 2
 dashboard:
   enabled: true
   listen: "0.0.0.0:8080"
+  user: "${DASH_USER}"
+  pass: "${DASH_PASS}"
+  session_secret: "${SESSION_SECRET}"
 EOF
 
     if [ -n "$CERT_FILE" ]; then
@@ -466,6 +476,13 @@ install_client_auto() {
     read -p "Connection Pool Size [8]: " POOL_SIZE
     POOL_SIZE=${POOL_SIZE:-8}
 
+    echo ""
+    read -p "Dashboard User [admin]: " DASH_USER
+    DASH_USER=${DASH_USER:-admin}
+    read -p "Dashboard Pass [admin]: " DASH_PASS
+    DASH_PASS=${DASH_PASS:-admin}
+    SESSION_SECRET=$(openssl rand -hex 16)
+
 
     # Write config
     mkdir -p "$CONFIG_DIR"
@@ -528,6 +545,9 @@ http_mimic:
 dashboard:
   enabled: true
   listen: "0.0.0.0:8080"
+  user: "${DASH_USER}"
+  pass: "${DASH_PASS}"
+  session_secret: "${SESSION_SECRET}"
 EOF
 
     create_systemd_service "client"
@@ -626,6 +646,13 @@ install_server_manual() {
     read -p "Verbose logging? [y/N]: " VE
     [[ "$VE" =~ ^[Yy]$ ]] && VERBOSE="true" || VERBOSE="false"
 
+    echo ""
+    read -p "Dashboard User [admin]: " DASH_USER
+    DASH_USER=${DASH_USER:-admin}
+    read -p "Dashboard Pass [admin]: " DASH_PASS
+    DASH_PASS=${DASH_PASS:-admin}
+    SESSION_SECRET=$(openssl rand -hex 16)
+
     mkdir -p "$CONFIG_DIR"
     CONFIG_FILE="$CONFIG_DIR/server.yaml"
     cat > "$CONFIG_FILE" << EOF
@@ -681,9 +708,13 @@ advanced:
   tcp_keepalive: 10
   max_connections: 5000
 
+
 dashboard:
   enabled: true
   listen: "0.0.0.0:8080"
+  user: "${DASH_USER}"
+  pass: "${DASH_PASS}"
+  session_secret: "${SESSION_SECRET}"
 EOF
 
     create_systemd_service "server"
