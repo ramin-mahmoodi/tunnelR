@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +35,11 @@ type dashboardState struct {
 	latency   int64 // atomic ns
 	startTime time.Time
 	cfg       DashboardConfig
+
+	// CPU usage tracking
+	lastCPUTime int64
+	lastTotTime int64
+	cpuUsage    float64
 }
 
 var dashState dashboardState
@@ -64,6 +71,7 @@ func StartDashboard(cfg DashboardConfig, mode, version string, client *Client, s
 	}
 
 	go startPingMonitor()
+	go startCPUMonitor()
 
 	mux := http.NewServeMux()
 
@@ -146,7 +154,8 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 		"uptime":     uptime.String(),
 		"uptime_s":   uptime.Seconds(),
 		"start_time": dashState.startTime.Format(time.RFC3339),
-		"cpu":        runtime.NumGoroutine(),
+		"cpu":        dashState.cpuUsage,
+		"load_avg":   getLoadAvg(),
 		"ram_val":    m.Alloc,
 		"ram":        humanBytes(int64(m.Alloc)),
 
@@ -350,6 +359,62 @@ func startPingMonitor() {
 		}
 		time.Sleep(5 * time.Second)
 	}
+}
+
+// getLoadAvg reads /proc/loadavg (Linux only)
+func getLoadAvg() []string {
+	data, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return []string{"0.00", "0.00", "0.00"}
+	}
+	parts := strings.Fields(string(data))
+	if len(parts) >= 3 {
+		return parts[:3]
+	}
+	return []string{"0.00", "0.00", "0.00"}
+}
+
+// startCPUMonitor calculates CPU % every 2 seconds
+func startCPUMonitor() {
+	for {
+		dashState.cpuUsage = calculateCPU()
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func calculateCPU() float64 {
+	data, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 0
+	}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) > 4 && fields[0] == "cpu" {
+			// user+nice+system+idle...
+			var total int64
+			var idle int64
+			for i, val := range fields[1:] {
+				v, _ := strconv.ParseInt(val, 10, 64)
+				total += v
+				if i == 3 { // idle is the 4th field
+					idle = v
+				}
+			}
+
+			diffTotal := total - dashState.lastTotTime
+			diffIdle := idle - dashState.lastCPUTime
+
+			dashState.lastTotTime = total
+			dashState.lastCPUTime = idle
+
+			if diffTotal > 0 {
+				usage := float64(diffTotal-diffIdle) / float64(diffTotal) * 100
+				return usage
+			}
+		}
+	}
+	return 0
 }
 
 // ─── Frontend Assets ───
