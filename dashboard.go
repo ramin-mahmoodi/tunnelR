@@ -182,6 +182,12 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
+	// Host Stats
+	memTotal, memUsed := getSystemMemory()
+	resp["ram_total"] = memTotal
+	resp["ram_used"] = memUsed
+	resp["uptime_sys"] = getSystemUptime()
+
 	lat := atomic.LoadInt64(&dashState.latency)
 	resp["ping_ms"] = -1
 	if lat > 0 {
@@ -462,6 +468,54 @@ func startTrafficMonitor() {
 			atomic.StoreInt64(&dashState.speedDown, diffRecv)
 		}
 	}
+}
+
+// ─── System Stats Helpers ───
+
+func getSystemUptime() int64 {
+	data, err := os.ReadFile("/proc/uptime")
+	if err != nil {
+		return 0
+	}
+	parts := strings.Fields(string(data))
+	if len(parts) > 0 {
+		val, _ := strconv.ParseFloat(parts[0], 64)
+		return int64(val)
+	}
+	return 0
+}
+
+func getSystemMemory() (int64, int64) {
+	// Returns (Total, Used) in bytes
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return 0, 0
+	}
+	defer file.Close()
+
+	var total, available int64
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "MemTotal:") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				v, _ := strconv.ParseInt(parts[1], 10, 64)
+				total = v * 1024 // kB to B
+			}
+		} else if strings.HasPrefix(line, "MemAvailable:") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				v, _ := strconv.ParseInt(parts[1], 10, 64)
+				available = v * 1024 // kB to B
+			}
+		}
+	}
+	// Fallback if MemAvailable not present (older kernels)
+	if available == 0 {
+		return total, 0 // Just show total
+	}
+	return total, total - available
 }
 
 // ─── Frontend Assets ───
