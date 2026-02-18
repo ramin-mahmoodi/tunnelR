@@ -1,6 +1,7 @@
 package httpmux
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -61,24 +62,38 @@ func NewServer(cfg *Config) *Server {
 //  Start — main entry point
 // ──────────────────────────────────────────────────
 
-func (s *Server) Start() error {
-	// Reverse-tunnel port listeners (server opens local ports,
-	// traffic goes: local port → smux stream → client → target)
+func (s *Server) Start(ctx context.Context) error {
+	var wg sync.WaitGroup
+
+	// Reverse-tunnel port listeners
+	// grouped by protocol
 	for _, m := range s.Config.Forward.TCP {
 		if bind, target, ok := SplitMap(m); ok {
-			go s.startReverseTCP(bind, target)
+			wg.Add(1)
+			go func(b, t string) {
+				defer wg.Done()
+				s.startReverseTCP(ctx, b, t)
+			}(bind, target)
 		}
 	}
 	for _, m := range s.Config.Forward.UDP {
 		if bind, target, ok := SplitMap(m); ok {
-			go s.startReverseUDP(bind, target)
+			wg.Add(1)
+			go func(b, t string) {
+				defer wg.Done()
+				s.startReverseUDP(ctx, b, t)
+			}(bind, target)
 		}
 	}
 
-	// Start session cleanup goroutine
-	go s.cleanupSessions()
+	// Session cleanup goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.cleanupSessions(ctx)
+	}()
 
-	// HTTP mux — tunnel endpoint + decoy catch-all
+	// HTTP Server
 	tunnelPath := mimicPath(s.Mimic)
 	prefix := strings.Split(tunnelPath, "{")[0]
 
@@ -89,15 +104,39 @@ func (s *Server) Start() error {
 	}
 	mux.HandleFunc("/", s.handleDecoy)
 
+	srv := &http.Server{
+		Addr:        s.Config.Listen,
+		Handler:     mux,
+		IdleTimeout: 0, // we manage our own keepalive
+		BaseContext: func(_ net.Listener) context.Context { return ctx },
+	}
+
 	log.Printf("[SERVER] listening on %s  tunnel=%s  transport=httpmux", s.Config.Listen, prefix)
 
-	return (&http.Server{
-		Addr:    s.Config.Listen,
-		Handler: mux,
-		// No ReadTimeout/WriteTimeout — tunneled connections are long-lived
-		// The smux keepalive handles dead connection detection
-		IdleTimeout: 0, // disable — we manage our own keepalive
-	}).ListenAndServe()
+	// Server error channel
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	// Wait for context cancellation or server error
+	select {
+	case <-ctx.Done():
+		// Graceful shutdown
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("[SERVER] HTTP shutdown error: %v", err)
+		}
+	case err := <-errCh:
+		return fmt.Errorf("HTTP server failed: %w", err)
+	}
+
+	wg.Wait()
+	return nil
 }
 
 // ──────────────────────────────────────────────────
@@ -292,20 +331,25 @@ func (s *Server) openStream() (*smux.Stream, error) {
 }
 
 // cleanupSessions periodically removes dead/closed sessions from the map.
-func (s *Server) cleanupSessions() {
+func (s *Server) cleanupSessions(ctx context.Context) {
 	tick := time.NewTicker(30 * time.Second)
 	defer tick.Stop()
-	for range tick.C {
-		s.sessMu.Lock()
-		for key, sess := range s.sessions {
-			if sess.IsClosed() {
-				delete(s.sessions, key)
-				if s.Verbose {
-					log.Printf("[CLEANUP] removed dead session %s", key)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			s.sessMu.Lock()
+			for key, sess := range s.sessions {
+				if sess.IsClosed() {
+					delete(s.sessions, key)
+					if s.Verbose {
+						log.Printf("[CLEANUP] removed dead session %s", key)
+					}
 				}
 			}
+			s.sessMu.Unlock()
 		}
-		s.sessMu.Unlock()
 	}
 }
 
@@ -313,17 +357,27 @@ func (s *Server) cleanupSessions() {
 //  Reverse TCP — server listens, forwards through smux to client
 // ──────────────────────────────────────────────────
 
-func (s *Server) startReverseTCP(bind, target string) {
-	ln, err := net.Listen("tcp", bind)
+func (s *Server) startReverseTCP(ctx context.Context, bind, target string) {
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(ctx, "tcp", bind)
 	if err != nil {
 		log.Printf("[ERR] reverse tcp %s: %v", bind, err)
 		return
 	}
+	defer ln.Close()
 	log.Printf("[RTCP] %s → client → %s", bind, target)
+
+	go func() {
+		<-ctx.Done()
+		ln.Close()
+	}()
 
 	for {
 		c, err := ln.Accept()
 		if err != nil {
+			if ctx.Err() != nil {
+				return // Context cancelled
+			}
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
@@ -371,7 +425,7 @@ type udpPeer struct {
 	stream   *smux.Stream
 }
 
-func (s *Server) startReverseUDP(bind, target string) {
+func (s *Server) startReverseUDP(ctx context.Context, bind, target string) {
 	laddr, err := net.ResolveUDPAddr("udp", bind)
 	if err != nil {
 		log.Printf("[ERR] reverse udp resolve %s: %v", bind, err)
@@ -382,7 +436,13 @@ func (s *Server) startReverseUDP(bind, target string) {
 		log.Printf("[ERR] reverse udp %s: %v", bind, err)
 		return
 	}
+	defer ln.Close()
 	log.Printf("[RUDP] %s → client → %s", bind, target)
+
+	go func() {
+		<-ctx.Done()
+		ln.Close()
+	}()
 
 	var mu sync.Mutex
 	peers := map[string]*udpPeer{}
@@ -391,23 +451,34 @@ func (s *Server) startReverseUDP(bind, target string) {
 	go func() {
 		tick := time.NewTicker(30 * time.Second)
 		defer tick.Stop()
-		for range tick.C {
-			now := time.Now().Unix()
-			mu.Lock()
-			for k, p := range peers {
-				if now-atomic.LoadInt64(&p.lastSeen) > 120 {
-					p.stream.Close()
-					delete(peers, k)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case nowTime := <-tick.C:
+				now := nowTime.Unix()
+				mu.Lock()
+				for k, p := range peers {
+					if now-atomic.LoadInt64(&p.lastSeen) > 120 {
+						p.stream.Close()
+						delete(peers, k)
+					}
 				}
+				mu.Unlock()
 			}
-			mu.Unlock()
 		}
 	}()
 
 	buf := make([]byte, 65535)
 	for {
 		n, raddr, err := ln.ReadFromUDP(buf)
-		if err != nil || n == 0 {
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			continue
+		}
+		if n == 0 {
 			continue
 		}
 

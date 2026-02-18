@@ -1,6 +1,7 @@
 package httpmux
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -80,12 +81,12 @@ func NewClient(cfg *Config) *Client {
 
 // Start connects to the server using a pool of concurrent smux sessions.
 // Pool workers cycle through paths on failure (Multi-IP Failover).
-func (c *Client) Start() error {
+func (c *Client) Start(ctx context.Context) error {
 	if len(c.paths) == 0 {
 		return fmt.Errorf("no paths configured")
 	}
 
-	errCh := make(chan error, 1)
+	var wg sync.WaitGroup
 
 	poolSize := c.paths[0].ConnectionPool
 	if poolSize <= 0 {
@@ -101,9 +102,23 @@ func (c *Client) Start() error {
 	log.Printf("[CLIENT] smux: keepalive=%v timeout=%v frame=%d",
 		sc.KeepAliveInterval, sc.KeepAliveTimeout, sc.MaxFrameSize)
 
-	go c.sessionHealthCheck()
-	go c.standbyManager()
-	go c.latencyProber()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.sessionHealthCheck(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.standbyManager(ctx)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.latencyProber(ctx)
+	}()
 
 	// Set initial frame level from config
 	if c.cfg.Smux.FrameSize >= 32768 {
@@ -113,7 +128,11 @@ func (c *Client) Start() error {
 	}
 
 	for i := 0; i < poolSize; i++ {
-		go c.poolWorker(i)
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			c.poolWorker(ctx, id)
+		}(i)
 		// Stagger connections to avoid DPI pattern detection
 		if i < poolSize-1 {
 			time.Sleep(500 * time.Millisecond)
@@ -123,8 +142,12 @@ func (c *Client) Start() error {
 	// Start DNS-over-Tunnel proxy if enabled
 	if c.cfg.DNS.Enabled {
 		go func() {
-			// Wait briefly for at least one session to establish
-			time.Sleep(2 * time.Second)
+			select {
+			case <-time.After(2 * time.Second):
+			case <-ctx.Done():
+				return
+			}
+
 			dns := &DNSProxy{
 				Listen:   c.cfg.DNS.Listen,
 				Upstream: c.cfg.DNS.Upstream,
@@ -143,17 +166,25 @@ func (c *Client) Start() error {
 		}()
 	}
 
-	// Block forever (individual goroutines reconnect on their own)
-	return <-errCh
+	// Block until context is done
+	<-ctx.Done()
+	log.Println("[CLIENT] stopping...")
+	wg.Wait()
+	return nil
 }
 
 // poolWorker — one goroutine that cycles through paths on failure.
 // Uses latency-based routing to pick the best path, with failover on consecutive failures.
-func (c *Client) poolWorker(id int) {
+func (c *Client) poolWorker(ctx context.Context, id int) {
 	pathIdx := c.bestPath()
 	failCount := 0
 
 	for {
+		// Check for cancellation
+		if ctx.Err() != nil {
+			return
+		}
+
 		path := c.paths[pathIdx]
 		retryInterval := time.Duration(path.RetryInterval) * time.Second
 		if retryInterval <= 0 {
@@ -163,12 +194,19 @@ func (c *Client) poolWorker(id int) {
 		// Try warm standby first for instant recovery
 		reused := false
 		select {
+		case <-ctx.Done():
+			return
 		case standby := <-c.standbyCh:
 			if !standby.IsClosed() {
 				log.Printf("[POOL#%d] using warm standby session", id)
 				c.addSession(standby)
 				// Block accepting streams until session dies
 				for {
+					if ctx.Err() != nil {
+						c.removeSession(standby)
+						standby.Close()
+						return
+					}
 					stream, err := standby.AcceptStream()
 					if err != nil {
 						c.removeSession(standby)
@@ -189,8 +227,12 @@ func (c *Client) poolWorker(id int) {
 		}
 
 		connStart := time.Now()
-		err := c.connectAndServe(id, path)
+		err := c.connectAndServe(ctx, id, path)
 		connDuration := time.Since(connStart)
+
+		if ctx.Err() != nil {
+			return
+		}
 
 		if err != nil {
 			alive := c.sessionCount()
@@ -218,7 +260,11 @@ func (c *Client) poolWorker(id int) {
 
 				if pathIdx == 0 {
 					log.Printf("[POOL#%d] all paths tried, backing off 10s", id)
-					time.Sleep(10 * time.Second)
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(10 * time.Second):
+					}
 					continue
 				}
 			} else {
@@ -227,10 +273,18 @@ func (c *Client) poolWorker(id int) {
 			}
 
 			atomic.AddInt64(&GlobalStats.Reconnects, 1)
-			time.Sleep(retryInterval)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryInterval):
+			}
 		} else {
 			failCount = 0
-			time.Sleep(retryInterval)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryInterval):
+			}
 		}
 	}
 }
@@ -261,7 +315,7 @@ func (c *Client) sessionCount() int {
 }
 
 // connectAndServe establishes one smux session on the given path and blocks until it dies.
-func (c *Client) connectAndServe(id int, path PathConfig) error {
+func (c *Client) connectAndServe(ctx context.Context, id int, path PathConfig) error {
 	transport := strings.ToLower(strings.TrimSpace(path.Transport))
 	if transport == "" {
 		transport = c.cfg.Transport
@@ -290,6 +344,7 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 	var conn net.Conn
 	var err error
 
+	// TODO: Make dialers context-aware
 	switch transport {
 	case "httpsmux", "wssmux":
 		conn, err = c.dialFragmentedTLS(dialAddr, dialTimeout)
@@ -300,6 +355,12 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 	}
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
+	}
+
+	// If context cancelled during dial
+	if ctx.Err() != nil {
+		conn.Close()
+		return ctx.Err()
 	}
 
 	c.setTCPOptions(conn)
@@ -334,6 +395,12 @@ func (c *Client) connectAndServe(id int, path PathConfig) error {
 	}
 
 	c.addSession(sess)
+	// Force close if context ends
+	go func() {
+		<-ctx.Done()
+		sess.Close()
+	}()
+
 	count := c.sessionCount()
 	log.Printf("[POOL#%d] connected to %s (pool: %d, frame: %dB)",
 		id, dialAddr, count, frameSizes[level])
@@ -437,28 +504,58 @@ func (c *Client) dialSession() (*smux.Session, error) {
 }
 
 // standbyManager keeps one pre-built session ready for instant promotion.
-func (c *Client) standbyManager() {
+func (c *Client) standbyManager(ctx context.Context) {
 	// Wait for primary pool to establish first
-	time.Sleep(5 * time.Second)
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(5 * time.Second):
+	}
+
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 		sess, err := c.dialSession()
 		if err != nil {
-			time.Sleep(5 * time.Second)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
 			continue
 		}
 		log.Printf("[STANDBY] warm session ready")
-		// Block until someone consumes the standby
-		c.standbyCh <- sess
+		// Block until someone consumes the standby OR context dies
+		select {
+		case <-ctx.Done():
+			sess.Close()
+			return
+		case c.standbyCh <- sess:
+			// Consumed
+		}
 		// Small delay before building next standby
-		time.Sleep(2 * time.Second)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
 	}
 }
 
 // latencyProber periodically measures TCP RTT to each path.
-func (c *Client) latencyProber() {
-	time.Sleep(3 * time.Second) // initial delay
+func (c *Client) latencyProber(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(3 * time.Second):
+	}
+
 	for {
 		for i, path := range c.paths {
+			if ctx.Err() != nil {
+				return
+			}
 			addr := strings.TrimSpace(path.Addr)
 			transport := strings.ToLower(strings.TrimSpace(path.Transport))
 			if transport == "" {
@@ -468,7 +565,9 @@ func (c *Client) latencyProber() {
 			dialAddr := net.JoinHostPort(host, port)
 
 			start := time.Now()
-			conn, err := net.DialTimeout("tcp", dialAddr, 5*time.Second)
+			// Use shorter timeout for probing
+			d := net.Dialer{Timeout: 5 * time.Second}
+			conn, err := d.DialContext(ctx, "tcp", dialAddr)
 			if err != nil {
 				atomic.StoreInt64(&c.pathLatency[i], int64(999*time.Second))
 				continue
@@ -486,7 +585,12 @@ func (c *Client) latencyProber() {
 			}
 			log.Println(msg)
 		}
-		time.Sleep(30 * time.Second)
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(30 * time.Second):
+		}
 	}
 }
 
@@ -592,7 +696,7 @@ func (c *Client) OpenStream(target string) (*smux.Stream, error) {
 	return nil, fmt.Errorf("all sessions exhausted")
 }
 
-func (c *Client) sessionHealthCheck() {
+func (c *Client) sessionHealthCheck(ctx context.Context) {
 	// 1. Cleanup ticker (fast check for explicitly closed sessions)
 	cleanTicker := time.NewTicker(3 * time.Second)
 	// 2. Recycle ticker (close old sessions to prevent ISP throttling)
@@ -603,6 +707,8 @@ func (c *Client) sessionHealthCheck() {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-cleanTicker.C:
 			c.sessMu.Lock()
 			alive := c.sessions[:0]

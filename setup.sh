@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ═══════════════════════════════════════════════════════════════
 
-SCRIPT_VERSION="3.2.1"
+SCRIPT_VERSION="3.4.1"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +22,8 @@ CONFIG_DIR="/etc/picotun"
 SYSTEMD_DIR="/etc/systemd/system"
 
 GITHUB_REPO="ramin-mahmoodi/tunnelR"
-LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
+# Use 'latest' endpoint to rigidly respect the user's "Latest Release" on GitHub
+LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 
 # ───────────── Banner & Checks ─────────────
 
@@ -82,6 +83,7 @@ download_binary() {
     detect_arch
 
     echo -e "${CYAN}🔍 Fetching latest release...${NC}"
+    # Parse tag_name from the specific 'latest' release object
     LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$LATEST_VERSION" ]; then
@@ -284,6 +286,69 @@ add_mapping() {
         MAPPINGS="${MAPPINGS}  - type: ${proto}\n    bind: \"${bind}\"\n    target: \"${target}\"\n"
         COUNT=$((COUNT+1))
     fi
+}
+
+# ───────────── System Optimization ─────────────
+
+optimize_system() {
+    echo -e "${CYAN}🚀 Optimizing System Network Stack...${NC}"
+    IFACE=$(ip link show | grep "state UP" | head -1 | awk '{print $2}' | cut -d: -f1)
+    [[ -z "$IFACE" ]] && IFACE="eth0"
+    echo -e "  Interface: ${PURPLE}$IFACE${NC}"
+
+    # Apply sysctl settings instantly
+    sysctl -w net.core.rmem_max=8388608 > /dev/null 2>&1
+    sysctl -w net.core.wmem_max=8388608 > /dev/null 2>&1
+    sysctl -w net.core.rmem_default=131072 > /dev/null 2>&1
+    sysctl -w net.core.wmem_default=131072 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_rmem="4096 65536 8388608" > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_wmem="4096 65536 8388608" > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_window_scaling=1 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_timestamps=1 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_sack=1 > /dev/null 2>&1
+    sysctl -w net.core.netdev_max_backlog=65535 > /dev/null 2>&1
+    sysctl -w net.core.somaxconn=65535 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_fastopen=3 > /dev/null 2>&1
+    sysctl -w net.ipv4.tcp_mtu_probing=1 > /dev/null 2>&1
+    
+    # Try enabling BBR
+    if modprobe tcp_bbr 2>/dev/null; then
+        sysctl -w net.ipv4.tcp_congestion_control=bbr > /dev/null 2>&1
+        sysctl -w net.core.default_qdisc=fq > /dev/null 2>&1
+        echo -e "  Congestion Control: ${GREEN}BBR${NC}"
+    else
+        echo -e "  Congestion Control: ${YELLOW}Cubic (BBR not supported)${NC}"
+    fi
+
+    # Persist settings
+    cat > /etc/sysctl.d/99-rstunnel-opt.conf << 'EOF'
+net.core.rmem_max=8388608
+net.core.wmem_max=8388608
+net.core.rmem_default=131072
+net.core.wmem_default=131072
+net.ipv4.tcp_rmem=4096 65536 8388608
+net.ipv4.tcp_wmem=4096 65536 8388608
+net.ipv4.tcp_window_scaling=1
+net.ipv4.tcp_timestamps=1
+net.ipv4.tcp_sack=1
+net.core.netdev_max_backlog=65535
+net.core.somaxconn=65535
+net.ipv4.tcp_fastopen=3
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_congestion_control=bbr
+net.core.default_qdisc=fq
+fs.file-max=1000000
+EOF
+
+    # Increase file limits
+    cat >> /etc/security/limits.conf << 'EOF'
+* soft nofile 1000000
+* hard nofile 1000000
+EOF
+
+    # Apply changes
+    sysctl -p /etc/sysctl.d/99-rstunnel-opt.conf > /dev/null 2>&1
+    echo -e "${GREEN}✓ System optimized for high throughput${NC}"
 }
 
 # ───────────── Install Server (Automatic) ─────────────

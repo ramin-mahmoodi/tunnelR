@@ -1,6 +1,7 @@
 package httpmux
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -53,7 +54,7 @@ func TestIntegration_BasicTCPForward(t *testing.T) {
 	// 3. Start server
 	srv := NewServer(serverCfg)
 	go func() {
-		if err := srv.Start(); err != nil {
+		if err := srv.Start(context.Background()); err != nil {
 			log.Printf("[TEST-SRV] %v", err)
 		}
 	}()
@@ -62,7 +63,7 @@ func TestIntegration_BasicTCPForward(t *testing.T) {
 	// 4. Start client
 	cl := NewClient(clientCfg)
 	go func() {
-		if err := cl.Start(); err != nil {
+		if err := cl.Start(context.Background()); err != nil {
 			log.Printf("[TEST-CLI] %v", err)
 		}
 	}()
@@ -133,11 +134,11 @@ func TestIntegration_Compression(t *testing.T) {
 
 	// 3. Start server + client
 	srv := NewServer(serverCfg)
-	go func() { srv.Start() }()
+	go func() { srv.Start(context.Background()) }()
 	time.Sleep(300 * time.Millisecond)
 
 	cl := NewClient(clientCfg)
-	go func() { cl.Start() }()
+	go func() { cl.Start(context.Background()) }()
 	time.Sleep(1 * time.Second)
 
 	// 4. Connect and test
@@ -181,11 +182,11 @@ func TestIntegration_ConnectionPool(t *testing.T) {
 	clientCfg.Paths[0].ConnectionPool = 3
 
 	srv := NewServer(serverCfg)
-	go func() { srv.Start() }()
+	go func() { srv.Start(context.Background()) }()
 	time.Sleep(300 * time.Millisecond)
 
 	cl := NewClient(clientCfg)
-	go func() { cl.Start() }()
+	go func() { cl.Start(context.Background()) }()
 	time.Sleep(2 * time.Second) // longer wait for pool to fill
 
 	cl.sessMu.RLock()

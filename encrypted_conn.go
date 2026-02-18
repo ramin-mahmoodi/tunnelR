@@ -38,6 +38,19 @@ type EncryptedConn struct {
 	readMu  sync.Mutex
 	writeMu sync.Mutex
 	readBuf []byte // leftover from previous Read
+
+	// bufPool reduces GC pressure by reusing buffers for encryption/decryption
+	bufPool *sync.Pool
+}
+
+// 128KB buffer size is sufficient for max smux frame (32KB) + padding + overhead
+const bufferSize = 128 * 1024
+
+var globalBufPool = &sync.Pool{
+	New: func() interface{} {
+		b := make([]byte, bufferSize)
+		return &b
+	},
 }
 
 // NewEncryptedConn wraps conn with AES-256-GCM encryption.
@@ -82,24 +95,48 @@ func (c *EncryptedConn) Write(data []byte) (int, error) {
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 			return 0, fmt.Errorf("nonce: %w", err)
 		}
-		ciphertext := c.gcm.Seal(nil, nonce, payload, nil)
 
-		pktLen := len(nonce) + len(ciphertext)
-		buf := make([]byte, 4+pktLen)
-		binary.BigEndian.PutUint32(buf[:4], uint32(pktLen))
+		// Get buffer from pool
+		bufPtr := globalBufPool.Get().(*[]byte)
+		defer globalBufPool.Put(bufPtr)
+		buf := *bufPtr
+
+		// Seal appends to dst; reusing buf as scratch space
+		// Format: [4B len][12B nonce][ciphertext + tag]
+		// We write directly into the large buffer to avoid extra allocations
+
+		// 1. Reserve 4 bytes for length
+		// 2. Copy nonce
 		copy(buf[4:], nonce)
-		copy(buf[4+len(nonce):], ciphertext)
 
-		if _, err := c.conn.Write(buf); err != nil {
+		// 3. Encrypt payload and append to buf after nonce
+		// Seal(dst, nonce, plaintext, additionalData)
+		// We use buf[:4+12] as 'dst' but we need to slice it carefully so append works from there
+		encrypted := c.gcm.Seal(buf[4+len(nonce):4+len(nonce)], nonce, payload, nil)
+
+		// Total packet length = nonce + ciphertext (which includes tag)
+		// Note: 'encrypted' slice is now backing the same array as 'buf'
+		pktLen := len(nonce) + len(encrypted)
+
+		// Fill in length header
+		binary.BigEndian.PutUint32(buf[:4], uint32(pktLen))
+
+		// Write the slice of the buffer that we used
+		totalSize := 4 + pktLen
+		if _, err := c.conn.Write(buf[:totalSize]); err != nil {
 			return 0, err
 		}
 	} else {
 		// No encryption — still length-framed for consistency
-		buf := make([]byte, 4+len(payload))
-		binary.BigEndian.PutUint32(buf[:4], uint32(len(payload)))
+		bufPtr := globalBufPool.Get().(*[]byte)
+		defer globalBufPool.Put(bufPtr)
+		buf := *bufPtr
+
+		pktLen := len(payload)
+		binary.BigEndian.PutUint32(buf[:4], uint32(pktLen))
 		copy(buf[4:], payload)
 
-		if _, err := c.conn.Write(buf); err != nil {
+		if _, err := c.conn.Write(buf[:4+pktLen]); err != nil {
 			return 0, err
 		}
 	}
@@ -138,7 +175,11 @@ func (c *EncryptedConn) Read(p []byte) (int, error) {
 	}
 
 	// Read encrypted payload
-	pkt := make([]byte, pktLen)
+	// Use pool for the encrypted packet
+	pktBufPtr := globalBufPool.Get().(*[]byte)
+	defer globalBufPool.Put(pktBufPtr)
+	pkt := (*pktBufPtr)[:pktLen] // slice locally
+
 	if _, err := io.ReadFull(c.conn, pkt); err != nil {
 		return 0, err
 	}
@@ -151,7 +192,15 @@ func (c *EncryptedConn) Read(p []byte) (int, error) {
 			return 0, fmt.Errorf("packet too short")
 		}
 		var err error
-		plaintext, err = c.gcm.Open(nil, pkt[:ns], pkt[ns:], nil)
+		// Reuse another buffer for plaintext to avoid allocation?
+		// Ideally GCM Open can reuse storage but here we might need a separate one or overwrite if safe.
+		// However, Open() reuses dst if provided.
+		// Let's use a second pooled buffer for plaintext outcome to be safe and avoid aliasing issues if any.
+		ptBufPtr := globalBufPool.Get().(*[]byte)
+		defer globalBufPool.Put(ptBufPtr)
+
+		// Open(dst, nonce, ciphertext, additionalData)
+		plaintext, err = c.gcm.Open((*ptBufPtr)[:0], pkt[:ns], pkt[ns:], nil)
 		if err != nil {
 			return 0, fmt.Errorf("decrypt: %w", err)
 		}
@@ -170,6 +219,7 @@ func (c *EncryptedConn) Read(p []byte) (int, error) {
 	n := copy(p, plaintext)
 	if n < len(plaintext) {
 		// Store remaining for next Read call
+		// We MUST allocate here because the pool buffer will be returned on return
 		c.readBuf = make([]byte, len(plaintext)-n)
 		copy(c.readBuf, plaintext[n:])
 	}
