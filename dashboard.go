@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // DashboardConfig configures the web dashboard.
@@ -40,6 +42,12 @@ type dashboardState struct {
 	lastCPUTime int64
 	lastTotTime int64
 	cpuUsage    float64
+
+	// Traffic rate tracking
+	lastBytesSent int64
+	lastBytesRecv int64
+	speedUp       int64 // bytes per second
+	speedDown     int64 // bytes per second
 }
 
 var dashState dashboardState
@@ -72,6 +80,7 @@ func StartDashboard(cfg DashboardConfig, mode, version string, client *Client, s
 
 	go startPingMonitor()
 	go startCPUMonitor()
+	go startTrafficMonitor()
 
 	mux := http.NewServeMux()
 
@@ -168,6 +177,8 @@ func handleAPIStats(w http.ResponseWriter, r *http.Request) {
 			"recv_human":      humanBytes(snap.BytesRecv),
 			"reconnects":      snap.Reconnects,
 			"active_sessions": snap.ActiveSessions,
+			"speed_up":        atomic.LoadInt64(&dashState.speedUp),
+			"speed_down":      atomic.LoadInt64(&dashState.speedDown),
 		},
 	}
 
@@ -278,6 +289,14 @@ func handleConfigAPI(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid body", 400)
 			return
 		}
+
+		// Validate YAML syntax and structure
+		var tempCfg Config
+		if err := yaml.Unmarshal(body, &tempCfg); err != nil {
+			http.Error(w, "Invalid configuration format: "+err.Error(), 400)
+			return
+		}
+
 		if err := os.WriteFile(configPath, body, 0644); err != nil {
 			http.Error(w, "Save failed: "+err.Error(), 500)
 			return
@@ -415,6 +434,34 @@ func calculateCPU() float64 {
 		}
 	}
 	return 0
+}
+
+func startTrafficMonitor() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		snap := GlobalStats.Snapshot()
+
+		sent := snap.BytesSent
+		recv := snap.BytesRecv
+
+		// Calculate delta
+		diffSent := sent - dashState.lastBytesSent
+		diffRecv := recv - dashState.lastBytesRecv
+
+		// Store for next tick
+		dashState.lastBytesSent = sent
+		dashState.lastBytesRecv = recv
+
+		// Update atomic speeds (prevent negative spikes on restart)
+		if diffSent >= 0 {
+			atomic.StoreInt64(&dashState.speedUp, diffSent)
+		}
+		if diffRecv >= 0 {
+			atomic.StoreInt64(&dashState.speedDown, diffRecv)
+		}
+	}
 }
 
 // ─── Frontend Assets ───

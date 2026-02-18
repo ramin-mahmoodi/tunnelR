@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets in $DASH_DIR..."
+    echo "Creating Lite Dashboard Assets (v3.5.0)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,552 +859,413 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR Pro</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <title>TunnelR Lite</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#3b82f6",
-                        "bg-dark": "#0b0e14",
-                        "card-dark": "#161b22",
-                        "success": "#10b981",
-                        "warning": "#f59e0b",
-                        "danger": "#ef4444",
-                    },
-                    fontFamily: { "sans": ["Inter", "sans-serif"] },
-                },
-            },
-        }
-    </script>
     <style>
-        body { background-color: #0b0e14; color: #e2e8f0; font-family: 'Inter', sans-serif; }
-        .glass-card {
-            background: rgba(22, 27, 34, 0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        /* Lite Theme: Solid Colors, High Contrast, Performance Focused */
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-nav: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --border: #334155;
         }
+        body { background-color: var(--bg-body); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); }
         .view { display: none; }
-        .view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .view.active { display: block; }
         
-        /* Stats Cards Gradients */
-        .icon-box { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Icon sizing */
+        .icon { width: 20px; height: 20px; fill: currentColor; }
+        
+        /* Spinner */
+        .loader { border: 2px solid #334155; border-top: 2px solid var(--accent); border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="h-screen flex overflow-hidden selection:bg-primary/30">
+<body class="h-screen flex overflow-hidden">
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-card-dark border-r border-slate-800 flex flex-col z-20">
-        <div class="p-6 flex items-center gap-3">
-            <div class="w-10 h-10 bg-primary/20 text-primary rounded-xl flex items-center justify-center">
-                <span class="material-symbols-outlined text-2xl">rocket_launch</span>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg tracking-tight">TunnelR</h1>
-                <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">PRO DASHBOARD</p>
-            </div>
+    <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col z-20 hidden md:flex" style="background-color: var(--bg-nav);">
+        <div class="p-4 flex items-center gap-3 border-b border-slate-700">
+            <div class="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white font-bold">T</div>
+            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1 py-0.5 rounded">Lite</span></h1>
         </div>
 
-        <nav class="flex-1 px-4 space-y-1 mt-4">
-            <button onclick="setView('dash')" id="nav-dash" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-primary bg-primary/10">
-                <span class="material-symbols-outlined">dashboard</span> Overview
+        <nav class="flex-1 px-2 space-y-1 mt-4">
+            <button onclick="setView('dash')" id="nav-dash" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors text-white bg-blue-600">
+                <!-- Dashboard Icon -->
+                <svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                Overview
             </button>
-            <button onclick="setView('logs')" id="nav-logs" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all">
-                <span class="material-symbols-outlined">terminal</span> Real-time Logs
+            <button onclick="setView('logs')" id="nav-logs" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                <!-- Logs Icon -->
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                Real-time Logs
             </button>
-            <button onclick="setView('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all">
-                <span class="material-symbols-outlined">settings</span> Configuration
+            <button onclick="setView('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                <!-- Settings Icon -->
+                <svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.04.17 0 .34.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.04-.17 0-.34-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                Configuration
             </button>
         </nav>
-
-        <div class="p-4 border-t border-slate-800">
-            <div class="glass-card p-4 rounded-xl">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-slate-400">System Status</span>
-                    <span id="health-dot" class="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                </div>
-                <div class="text-xs text-slate-500" id="version-display">v3.4.3</div>
-            </div>
+        
+        <div class="p-4 text-xs text-slate-500 border-t border-slate-700">
+            v<span id="version-disp">3.5.0</span>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 bg-bg-dark relative overflow-hidden">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-900">
         <!-- Top Bar -->
-        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-bg-dark/80 backdrop-blur z-10">
-            <h2 class="text-xl font-bold text-white" id="page-title">Overview</h2>
+        <header class="h-14 border-b border-slate-700 flex items-center justify-between px-6 bg-slate-800">
+            <h2 class="text-lg font-semibold text-white" id="page-title">Overview</h2>
             <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                    <span class="material-symbols-outlined text-slate-400 text-sm">schedule</span>
-                    <span id="uptime-top" class="text-xs font-mono text-slate-300">00:00:00</span>
-                </div>
+                <span class="text-xs font-mono text-slate-400">UPTIME: <span id="uptime-val" class="text-white">00:00:00</span></span>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
             
-            <!-- DASHBOARD OVERVIEW -->
+            <!-- VIEW: DASHBOARD -->
             <div id="view-dash" class="view active">
-                <!-- Top Stats Row -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <!-- CPU Card -->
-                    <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span class="material-symbols-outlined text-6xl">memory</span>
-                        </div>
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <p class="text-slate-400 text-sm font-medium mb-1">CPU Usage</p>
-                                <h3 class="text-3xl font-bold text-white tracking-tight"><span id="cpu-val">0</span>%</h3>
-                            </div>
-                            <div class="icon-box bg-blue-500/10 text-blue-500"><span class="material-symbols-outlined">memory</span></div>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
-                            <div id="cpu-bar" class="bg-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                        <p class="text-xs text-slate-500 flex items-center gap-1">
-                            <span class="text-emerald-400 flex items-center"><span class="material-symbols-outlined text-[14px]">trending_flat</span> Stable</span> vs last min
-                        </p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <!-- Stat Cards -->
+                    <div class="card p-4">
+                        <div class="text-slate-400 text-xs font-bold uppercase">CPU Usage</div>
+                        <div class="text-2xl font-bold text-white mt-1"><span id="cpu-val">0</span>%</div>
+                        <div class="w-full bg-slate-700 h-1 mt-2 rounded overflow-hidden"><div id="cpu-bar" class="bg-blue-500 h-full" style="width:0%"></div></div>
                     </div>
-
-                    <!-- RAM Card -->
-                    <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span class="material-symbols-outlined text-6xl">grid_view</span>
-                        </div>
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <p class="text-slate-400 text-sm font-medium mb-1">RAM Usage</p>
-                                <h3 class="text-3xl font-bold text-white tracking-tight"><span id="ram-val">0</span></h3>
-                            </div>
-                            <div class="icon-box bg-emerald-500/10 text-emerald-500"><span class="material-symbols-outlined">grid_view</span></div>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-2">
-                            <div id="ram-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                        <p class="text-xs text-slate-500">of available system memory</p>
+                    <div class="card p-4">
+                        <div class="text-slate-400 text-xs font-bold uppercase">RAM Usage</div>
+                        <div class="text-2xl font-bold text-white mt-1"><span id="ram-val">0</span></div>
+                        <div class="text-xs text-slate-500 mt-1">System Memory</div>
                     </div>
-
-                    <!-- System Card -->
-                    <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
-                         <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <span class="material-symbols-outlined text-6xl">dns</span>
-                        </div>
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <p class="text-slate-400 text-sm font-medium mb-1">System Load</p>
-                                <h3 class="text-3xl font-bold text-white tracking-tight" id="load-val">0.00</h3>
-                            </div>
-                            <div class="icon-box bg-orange-500/10 text-orange-500"><span class="material-symbols-outlined">dns</span></div>
-                        </div>
-                        <div class="flex gap-2 mt-3">
-                            <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono" id="load-1">1m: 0.0</span>
-                            <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono" id="load-5">5m: 0.0</span>
-                            <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 font-mono" id="load-15">15m: 0.0</span>
-                        </div>
+                    <div class="card p-4">
+                        <div class="text-slate-400 text-xs font-bold uppercase">Load Avg</div>
+                        <div class="text-2xl font-bold text-white mt-1" id="load-val">0.00</div>
+                        <div class="text-xs text-slate-500 mt-1 font-mono" id="load-full">1m 5m 15m</div>
+                    </div>
+                    <div class="card p-4">
+                        <div class="text-slate-400 text-xs font-bold uppercase">Sessions</div>
+                        <div class="text-2xl font-bold text-white mt-1" id="sess-count">0</div>
+                        <div class="text-xs text-slate-500 mt-1">Active Connections</div>
                     </div>
                 </div>
 
                 <!-- Traffic Chart -->
-                <div class="glass-card rounded-2xl p-6 mb-8">
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
-                            <p class="text-sm text-slate-400">Real-time network throughput</p>
-                        </div>
-                        <div class="flex gap-4">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-                                <span class="text-xs text-slate-300">Upload <span id="speed-up" class="font-mono text-white opacity-80 ml-1">0 B/s</span></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                                <span class="text-xs text-slate-300">Download <span id="speed-down" class="font-mono text-white opacity-80 ml-1">0 B/s</span></span>
-                            </div>
+                <div class="card p-4 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-white uppercase">Traffic</h3>
+                        <div class="flex gap-4 text-xs font-mono">
+                            <span class="text-blue-400">â†‘ <span id="speed-up">0 B/s</span></span>
+                            <span class="text-emerald-400">â†“ <span id="speed-down">0 B/s</span></span>
                         </div>
                     </div>
-                    <div class="h-[300px] w-full">
+                    <div class="h-64 w-full">
                         <canvas id="trafficChart"></canvas>
                     </div>
                 </div>
-
-                <!-- Active Sessions -->
-                <div class="glass-card rounded-2xl p-6">
-                    <h3 class="text-lg font-bold text-white mb-4">Active Sessions</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="text-xs text-slate-500 uppercase font-bold border-b border-slate-700/50">
-                                <tr>
-                                    <th class="px-4 py-3">Remote Address</th>
-                                    <th class="px-4 py-3">Streams</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sessions-table" class="divide-y divide-slate-800 text-sm text-slate-300"></tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
 
-            <!-- LOGS VIEW -->
+            <!-- VIEW: LOGS -->
             <div id="view-logs" class="view">
-                <div class="glass-card rounded-2xl p-6 h-[calc(100vh-140px)] flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                            <h3 class="text-lg font-bold">Live System Logs</h3>
-                        </div>
+                <div class="card flex flex-col h-[calc(100vh-140px)]">
+                    <div class="p-3 border-b border-slate-700 flex justify-between bg-slate-800 rounded-t">
+                        <span class="font-bold text-xs uppercase text-slate-400">System Logs</span>
                         <div class="flex gap-2">
-                            <span class="text-xs font-bold text-slate-500 uppercase self-center mr-2">Filter:</span>
-                            <button onclick="setLogFilter('all')" id="btn-log-all" class="px-3 py-1 bg-primary text-white rounded text-xs transition-colors">All</button>
-                            <button onclick="setLogFilter('warn')" id="btn-log-warn" class="px-3 py-1 bg-slate-800 text-slate-400 hover:text-warning rounded text-xs transition-colors">Warnings</button>
-                            <button onclick="setLogFilter('error')" id="btn-log-error" class="px-3 py-1 bg-slate-800 text-slate-400 hover:text-danger rounded text-xs transition-colors">Errors</button>
+                            <button onclick="setLogFilter('all')" class="text-xs text-white hover:text-blue-400">All</button>
+                            <button onclick="setLogFilter('warn')" class="text-xs text-yellow-400 hover:text-white">Warn</button>
+                            <button onclick="setLogFilter('error')" class="text-xs text-red-400 hover:text-white">Error</button>
                         </div>
                     </div>
-                    <div id="logs-container" class="flex-1 bg-[#0d1117] rounded-lg p-4 overflow-y-auto font-mono text-xs space-y-1 border border-slate-800/50">
-                        <div class="text-slate-500 italic text-center mt-10">Connecting to log stream...</div>
+                    <div id="logs-container" class="flex-1 overflow-y-auto p-4 font-mono text-xs text-slate-300 space-y-1 bg-[#0d1117]">
+                        <div class="text-center text-slate-500 mt-10">Waiting for logs...</div>
                     </div>
                 </div>
             </div>
 
-            <!-- SETTINGS VIEW -->
+            <!-- VIEW: SETTINGS -->
             <div id="view-settings" class="view">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="text-2xl font-bold text-white">Configuration</h3>
-                        <p class="text-slate-400 text-sm">Manage core tunnel settings</p>
-                    </div>
-                    <button onclick="saveConfig()" class="px-6 py-2 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">save</span> Save Changes
-                    </button>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Full Configuration</h3>
+                    <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow">Save & Restart</button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <!-- Form Side -->
-                    <div class="lg:col-span-2 space-y-6">
-                        
-                        <!-- General -->
-                        <div class="glass-card rounded-xl p-6">
-                            <h4 class="text-sm font-bold text-primary uppercase tracking-wider mb-4 border-b border-white/5 pb-2">General</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">Listen Address</label>
-                                    <input type="text" id="f-listen" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">PSK (Secret Key)</label>
-                                    <input type="password" id="f-psk" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">Transport</label>
-                                    <select id="f-transport" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none">
-                                        <option value="httpmux">HTTP Mimicry</option>
-                                        <option value="httpsmux">HTTPS Mimicry</option>
-                                        <option value="tcpmux">TCP Multiplexing</option>
-                                        <option value="wsmux">WebSocket</option>
-                                        <option value="wssmux">WebSocket Secure</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-400 mb-1">Profile</label>
-                                    <select id="f-profile" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none">
-                                        <option value="balanced">Balanced</option>
-                                        <option value="aggressive">Aggressive</option>
-                                        <option value="latency">Latency Focused</option>
-                                        <option value="gaming">Gaming</option>
-                                    </select>
-                                </div>
-                            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- General -->
+                    <div class="card p-5 space-y-4">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase border-b border-slate-700 pb-2">General</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="label">Mode</label><input disabled id="f-mode" class="input disabled"></div>
+                            <div><label class="label">Transport</label><select id="f-transport" class="input">
+                                <option value="httpmux">httpmux</option><option value="httpsmux">httpsmux</option>
+                                <option value="tcpmux">tcpmux</option><option value="wsmux">wsmux</option><option value="wssmux">wssmux</option>
+                            </select></div>
+                            <div><label class="label">Listen Addr</label><input id="f-listen" class="input"></div>
+                            <div><label class="label">PSK (Secret)</label><input type="password" id="f-psk" class="input"></div>
                         </div>
-
-                        <!-- Obfuscation -->
-                        <div class="glass-card rounded-xl p-6">
-                            <div class="flex justify-between items-center mb-4 border-b border-white/5 pb-2">
-                                <h4 class="text-sm font-bold text-primary uppercase tracking-wider">Obfuscation</h4>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" id="f-obfs-enabled" class="form-checkbox text-primary rounded bg-slate-900 border-slate-700">
-                                    <span class="text-xs font-bold text-white">Enable</span>
-                                </label>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="text-xs text-slate-400 block mb-1">Min Padding</label><input type="number" id="f-obfs-min" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white"></div>
-                                <div><label class="text-xs text-slate-400 block mb-1">Max Padding</label><input type="number" id="f-obfs-max" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white"></div>
-                            </div>
-                        </div>
-
-                        <!-- Smux -->
-                        <div class="glass-card rounded-xl p-6">
-                            <h4 class="text-sm font-bold text-primary uppercase tracking-wider mb-4 border-b border-white/5 pb-2">Multiplexer (Smux)</h4>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div><label class="text-xs text-slate-400 block mb-1">KeepAlive (sec)</label><input type="number" id="f-smux-keepalive" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white"></div>
-                                <div><label class="text-xs text-slate-400 block mb-1">Max Stream</label><input type="number" id="f-smux-maxstream" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white"></div>
-                            </div>
-                        </div>
-
                     </div>
 
-                    <!-- Raw Config Side -->
-                    <div class="glass-card rounded-xl p-6 flex flex-col h-full">
-                        <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Raw Configuration</h4>
-                        <textarea id="config-editor" class="flex-1 w-full bg-[#0d1117] border border-slate-800 rounded-lg p-4 font-mono text-xs text-slate-300 outline-none focus:border-primary resize-none" spellcheck="false"></textarea>
-                        <p class="text-[10px] text-slate-500 mt-2">Recommended: Use the form for basic checks, modify raw YAML only if necessary.</p>
+                    <!-- TLS & Mimic -->
+                    <div class="card p-5 space-y-4">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase border-b border-slate-700 pb-2">TLS / Mimicry</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="label">Cert File</label><input id="f-cert" class="input"></div>
+                            <div><label class="label">Key File</label><input id="f-key" class="input"></div>
+                            <div><label class="label">Fake Domain</label><input id="f-domain" class="input"></div>
+                            <div><label class="label">User Agent</label><input id="f-ua" class="input text-xs"></div>
+                        </div>
+                    </div>
+
+                    <!-- Smux & Obfuscation -->
+                    <div class="card p-5 space-y-4">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase border-b border-slate-700 pb-2">Smux & Obfuscation</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="label">Smux Ver</label><input type="number" id="f-smux-ver" class="input"></div>
+                            <div><label class="label">KeepAlive</label><input type="number" id="f-smux-ka" class="input"></div>
+                            <div><label class="label">Max Stream</label><input type="number" id="f-smux-stream" class="input"></div>
+                            <div><label class="label">Max Recv</label><input type="number" id="f-smux-recv" class="input"></div>
+                            <div class="col-span-2 flex items-center gap-4 mt-2">
+                                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" id="f-obfs-en" class="rounded bg-slate-800 border-slate-600"> Enable Obfs</label>
+                                <input placeholder="Min Pad" type="number" id="f-obfs-min" class="input w-24">
+                                <input placeholder="Max Pad" type="number" id="f-obfs-max" class="input w-24">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced -->
+                    <div class="card p-5 space-y-4">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase border-b border-slate-700 pb-2">Advanced Network</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="label">TCP Buffer</label><input type="number" id="f-tcp-buf" class="input"></div>
+                            <div><label class="label">TCP KeepAlive</label><input type="number" id="f-tcp-ka" class="input"></div>
+                            <div class="col-span-2">
+                                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" id="f-nodelay" class="rounded bg-slate-800 border-slate-600"> TCP NoDelay</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
         </div>
     </main>
 
     <script>
         const $ = s => document.querySelector(s);
-        let chart = null, lastStats = null, config = null, logSource = null;
-        let logFilter = 'all';
-
+        let chart = null;
+        let config = {};
+        
+        // --- VIEW LOGIC ---
         function setView(id) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('text-primary', 'bg-primary/10'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('bg-blue-600', 'text-white'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.add('text-slate-400'));
             
             $(`#view-${id}`).classList.add('active');
-            $(`#nav-${id}`).classList.add('text-primary', 'bg-primary/10');
-            $(`#nav-${id}`).classList.remove('text-slate-400');
-            $('#page-title').innerText = {dash:'Overview', logs:'System Logs', settings:'Configuration'}[id];
+            const nav = $(`#nav-${id}`);
+            nav.classList.remove('text-slate-400', 'hover:bg-slate-700');
+            nav.classList.add('bg-blue-600', 'text-white');
             
             if(id === 'logs') initLogs();
             if(id === 'settings') loadConfig();
         }
 
-        // Stats Loop
+        // --- STATS LOOP ---
         setInterval(async () => {
             try {
                 const res = await fetch('/api/stats');
-                if(!res.ok) throw new Error('Failed');
                 const data = await res.json();
                 
-                // Top Cards
                 $('#cpu-val').innerText = data.cpu.toFixed(1);
                 $('#cpu-bar').style.width = Math.min(data.cpu, 100) + '%';
+                $('#ram-val').innerText = data.ram;
+                $('#uptime-val').innerText = data.uptime.split('.')[0];
+                $('#version-disp').innerText = data.version;
+                $('#sess-count').innerText = data.stats.total_conns;
                 
-                // RAM (Assume backend sends formatted string or bytes)
-                // data.ram is "1.2 MB", data.ram_val is bytes
-                // Need total RAM. Backend doesn't send total RAM directly in `dashboard.go` (only used m.Alloc). 
-                // We'll simulate percentage based on a fixed assumption or just show the Usage.
-                // The prompt says "4.2/16GB". I'll use data.ram and mock total if missing, or use data.sys_total if I added it. 
-                // I didn't add SysTotal to Go. I'll just show the usage value.
-                $('#ram-val').innerText = data.ram; 
-                // Fake bar for visual
-                $('#ram-bar').style.width = '30%'; 
-
-                $('#load-val').innerText = (data.load_avg && data.load_avg[0]) || '0.00';
                 if(data.load_avg) {
-                    $('#load-1').innerText = '1m: ' + data.load_avg[0];
-                    $('#load-5').innerText = '5m: ' + data.load_avg[1];
-                    $('#load-15').innerText = '15m: ' + data.load_avg[2];
+                    $('#load-val').innerText = data.load_avg[0];
+                    $('#load-full').innerText = data.load_avg.join('  ');
                 }
-                $('#uptime-top').innerText = data.uptime.split('.')[0];
-                $('#version-display').innerText = 'v' + data.version;
 
-                // Chart
-                updateChart(data);
-                
-                // Sessions
-                renderSessions(data);
+                // Traffic (Server-calculated)
+                const up = humanBytes(data.stats.speed_up || 0);
+                const down = humanBytes(data.stats.speed_down || 0);
+                $('#speed-up').innerText = up + '/s';
+                $('#speed-down').innerText = down + '/s';
 
-            } catch(e) { console.error(e); }
+                updateChart(data.stats.speed_down || 0, data.stats.speed_up || 0);
+
+            } catch(e) {/* quiet */}
         }, 1000);
 
-        function updateChart(data) {
+        function updateChart(rx, tx) {
             if(!chart) {
                 const ctx = $('#trafficChart').getContext('2d');
-                // Gradient
-                const gUp = ctx.createLinearGradient(0,0,0,300);
-                gUp.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
-                gUp.addColorStop(1, 'rgba(59, 130, 246, 0)');
-                const gDown = ctx.createLinearGradient(0,0,0,300);
-                gDown.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
-                gDown.addColorStop(1, 'rgba(16, 185, 129, 0)');
-
                 chart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: Array(20).fill(''),
+                        labels: Array(30).fill(''),
                         datasets: [
-                            { label: 'RX', data: Array(20).fill(0), borderColor: '#10b981', backgroundColor: gDown, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 },
-                            { label: 'TX', data: Array(20).fill(0), borderColor: '#3b82f6', backgroundColor: gUp, fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }
+                            { label: 'DL', data: Array(30).fill(0), borderColor: '#10b981', borderWidth: 2, pointRadius:0, tension: 0.1 },
+                            { label: 'UL', data: Array(30).fill(0), borderColor: '#3b82f6', borderWidth: 2, pointRadius:0, tension: 0.1 }
                         ]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: { intersect: false, mode: 'index' },
-                        plugins: { legend: { display: false } },
-                        scales: { x: { display: false }, y: { display: false, min: 0 } }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x:{display:false}, y:{display:false, min:0} }, plugins: { legend:{display:false} }, animation: false }
                 });
             }
-
-            if(lastStats) {
-                // Calculate Speed (Bytes per second)
-                // time delta is approx 1s
-                const txSpeed = Math.max(0, data.stats.bytes_sent - lastStats.stats.bytes_sent);
-                const rxSpeed = Math.max(0, data.stats.bytes_recv - lastStats.stats.bytes_recv);
-                
-                $('#speed-up').innerText = humanBytes(txSpeed) + '/s';
-                $('#speed-down').innerText = humanBytes(rxSpeed) + '/s';
-
-                chart.data.datasets[1].data.push(txSpeed); // Blue (TX - Up)
-                chart.data.datasets[0].data.push(rxSpeed); // Green (RX - Down)
-                chart.data.datasets[0].data.shift();
-                chart.data.datasets[1].data.shift();
-                chart.update('none');
-            }
-            lastStats = data;
+            // Add new data
+            chart.data.datasets[0].data.push(rx);
+            chart.data.datasets[1].data.push(tx);
+            chart.data.datasets[0].data.shift();
+            chart.data.datasets[1].data.shift();
+            chart.update();
         }
 
-        function humanBytes(bytes) {
-            if (!bytes) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        function humanBytes(b) {
+            const u = ['B', 'KB', 'MB', 'GB'];
+            let i=0;
+            while(b >= 1024 && i < u.length-1) { b/=1024; i++; }
+            return b.toFixed(1) + ' ' + u[i];
         }
 
-        function renderSessions(data) {
-            const list = data.server ? data.server.sessions : (data.client ? data.client.sessions : []);
-            $('#sessions-table').innerHTML = list.map(s => `
-                <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                    <td class="px-4 py-3 font-mono text-xs text-blue-400">${s.addr || 'Client #'+s.id}</td>
-                    <td class="px-4 py-3">${s.streams}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${s.closed?'bg-red-500/10 text-red-500':'bg-emerald-500/10 text-emerald-500'}">${s.closed?'CLOSED':'ACTIVE'}</span></td>
-                    <td class="px-4 py-3 text-slate-500 text-xs">${s.age || '-'}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="4" class="text-center py-4 text-slate-500">No active sessions</td></tr>';
-        }
-
-        // LOGS
-        function initLogs() {
-            if(logSource) return;
-            $('#logs-container').innerHTML = '';
-            logSource = new EventSource('/api/logs/stream');
-            logSource.onmessage = e => {
-                const line = e.data;
-                const div = document.createElement('div');
-                div.className = 'whitespace-pre-wrap break-all hover:bg-white/5 px-1 rounded';
-                
-                // Colorize
-                if(line.toLowerCase().includes('err') || line.toLowerCase().includes('fail')) {
-                    div.classList.add('text-red-400', 'log-error');
-                } else if(line.toLowerCase().includes('warn')) {
-                    div.classList.add('text-yellow-400', 'log-warn');
-                } else {
-                    div.classList.add('text-slate-400', 'log-info');
-                }
-                div.textContent = line; // Safe text
-                appendLog(div);
-            };
-        }
-
-        function appendLog(el) {
-            const c = $('#logs-container');
-            c.appendChild(el);
-            if(c.children.length > 200) c.removeChild(c.firstChild);
-            
-            // Filter check
-            applyLogFilterSingle(el);
-            
-            // Auto scroll
-            c.scrollTop = c.scrollHeight;
-        }
-
-        function setLogFilter(f) {
-            logFilter = f;
-            document.querySelectorAll('#view-logs button').forEach(b => b.classList.remove('bg-primary', 'text-white'));
-            $(`#btn-log-${f}`).classList.add('bg-primary', 'text-white');
-            $(`#btn-log-${f}`).classList.remove('bg-slate-800', 'text-slate-400');
-            
-            // Re-apply to all
-            document.querySelectorAll('#logs-container div').forEach(applyLogFilterSingle);
-        }
-
-        function applyLogFilterSingle(el) {
-            if(logFilter === 'all') el.style.display = 'block';
-            else if(logFilter === 'error') el.style.display = el.classList.contains('log-error') ? 'block' : 'none';
-            else if(logFilter === 'warn') el.style.display = el.classList.contains('log-warn') ? 'block' : 'none';
-        }
-
-        // CONFIG
+        // --- CONFIG LOADER ---
         async function loadConfig() {
             const t = await (await fetch('/api/config')).text();
-            $('#config-editor').value = t;
             config = jsyaml.load(t);
-            
-            // Map fields
-            $('#f-listen').value = config.listen || '';
-            $('#f-psk').value = config.psk || '';
-            $('#f-transport').value = config.transport || 'httpmux';
-            $('#f-profile').value = config.profile || 'balanced';
+            if(!config) return;
+
+            // Map fields (Flat + Nested)
+            setVal('mode', config.mode);
+            setVal('transport', config.transport);
+            setVal('listen', config.listen);
+            setVal('psk', config.psk);
+            setVal('cert', config.cert_file);
+            setVal('key', config.key_file);
             
             // Nested
-            if(config.obfuscation) {
-                $('#f-obfs-enabled').checked = config.obfuscation.enabled;
-                $('#f-obfs-min').value = config.obfuscation.min_padding || 0;
-                $('#f-obfs-max').value = config.obfuscation.max_padding || 0;
-            }
-            if(config.smux) {
-                $('#f-smux-keepalive').value = config.smux.keepalive || 10;
-                $('#f-smux-maxstream').value = config.smux.max_stream || 0;
-            }
+            const http = config.http_mimic || {};
+            setVal('domain', http.fake_domain);
+            setVal('ua', http.user_agent);
+
+            const smux = config.smux || {};
+            setVal('smux-ver', smux.version);
+            setVal('smux-ka', smux.keepalive);
+            setVal('smux-stream', smux.max_stream);
+            setVal('smux-recv', smux.max_recv);
+
+            const obfs = config.obfuscation || {};
+            $('#f-obfs-en').checked = obfs.enabled;
+            setVal('obfs-min', obfs.min_padding);
+            setVal('obfs-max', obfs.max_padding);
+
+            const adv = config.advanced || {};
+            setVal('tcp-buf', adv.tcp_read_buffer);
+            setVal('tcp-ka', adv.tcp_keepalive);
+            $('#f-nodelay').checked = adv.tcp_nodelay;
+        }
+
+        function setVal(id, val) {
+            const el = $(`#f-${id}`);
+            if(el) el.value = (val !== undefined && val !== null) ? val : '';
         }
 
         async function saveConfig() {
-            if(!confirm('Save settings and restart service?')) return;
-            // Sync form back to config obj
+            if(!confirm('Apply changes and restart?')) return;
+            
+            // Read back
             config.listen = $('#f-listen').value;
             config.psk = $('#f-psk').value;
             config.transport = $('#f-transport').value;
-            config.profile = $('#f-profile').value;
-            
+            config.cert_file = $('#f-cert').value;
+            config.key_file = $('#f-key').value;
+
+            if(!config.http_mimic) config.http_mimic = {};
+            config.http_mimic.fake_domain = $('#f-domain').value;
+            config.http_mimic.user_agent = $('#f-ua').value;
+
+            if(!config.smux) config.smux = {};
+            config.smux.version = parseInt($('#f-smux-ver').value);
+            config.smux.keepalive = parseInt($('#f-smux-ka').value);
+            config.smux.max_stream = parseInt($('#f-smux-stream').value);
+            config.smux.max_recv = parseInt($('#f-smux-recv').value);
+
             if(!config.obfuscation) config.obfuscation = {};
-            config.obfuscation.enabled = $('#f-obfs-enabled').checked;
+            config.obfuscation.enabled = $('#f-obfs-en').checked;
             config.obfuscation.min_padding = parseInt($('#f-obfs-min').value);
             config.obfuscation.max_padding = parseInt($('#f-obfs-max').value);
-            
-            if(!config.smux) config.smux = {};
-            config.smux.keepalive = parseInt($('#f-smux-keepalive').value);
-            config.smux.max_stream = parseInt($('#f-smux-maxstream').value);
 
-            // Dump
+            if(!config.advanced) config.advanced = {};
+            config.advanced.tcp_read_buffer = parseInt($('#f-tcp-buf').value);
+            config.advanced.tcp_write_buffer = parseInt($('#f-tcp-buf').value); // sync
+            config.advanced.tcp_keepalive = parseInt($('#f-tcp-ka').value);
+            config.advanced.tcp_nodelay = $('#f-nodelay').checked;
+
             const yaml = jsyaml.dump(config);
-            
             try {
                 const r = await fetch('/api/config', { method:'POST', body: yaml });
                 if(r.ok) {
                     await fetch('/api/restart', { method:'POST' });
-                    alert('Restarting... Page will reload.');
+                    alert('Restarting...');
                     setTimeout(()=>location.reload(), 3000);
-                } else alert('Save failed');
-            } catch(e) { alert('Error: '+e); }
+                } else {
+                    const txt = await r.text();
+                    alert('Error: '+txt);
+                }
+            } catch(e) { alert(e); }
+        }
+
+        // --- LOGS ---
+        let logSrc;
+        function initLogs() {
+            if(logSrc) return;
+            $('#logs-container').innerHTML = '';
+            logSrc = new EventSource('/api/logs/stream');
+            logSrc.onmessage = e => {
+                const d = document.createElement('div');
+                const t = e.data;
+                d.textContent = t;
+                if(t.includes('ERR') || t.includes('fail')) d.className = 'text-red-400';
+                else if(t.includes('WARN')) d.className = 'text-yellow-400';
+                
+                // Add class for filtering
+                d.classList.add(t.includes('ERR')||t.includes('fail') ? 'log-error' : (t.includes('WARN')?'log-warn':'log-info'));
+                
+                const c = $('#logs-container');
+                c.appendChild(d);
+                if(c.children.length > 200) c.removeChild(c.firstChild);
+                c.scrollTop = c.scrollHeight;
+                
+                // Apply current filter
+                if(window.logFilter) applyFilter(d);
+            };
+        }
+        
+        window.logFilter = 'all';
+        function setLogFilter(f) { window.logFilter = f; document.querySelectorAll('#logs-container div').forEach(applyFilter); }
+        function applyFilter(d) {
+            if(window.logFilter === 'all') d.style.display = 'block';
+            else d.style.display = d.classList.contains('log-'+window.logFilter) ? 'block' : 'none';
         }
     </script>
+    <style>.label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; } .input { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 6px 10px; border-radius: 4px; font-size: 13px; } .input:focus { border-color: #3b82f6; outline: none; } .input.disabled { opacity: 0.5; cursor: not-allowed; }</style>
 </body>
 </html>
+
 EOF
-    
-    echo "Dashboard assets overhaul complete (v3.4.3)."
 }
+
 
 dashboard_menu() {
     show_banner
