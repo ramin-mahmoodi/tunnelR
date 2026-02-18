@@ -773,6 +773,12 @@ install_dashboard_assets() {
     }
 </script>
 <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
     body { font-family: 'Inter', sans-serif; }
     .glass-card {
         background: rgba(22, 27, 34, 0.7);
@@ -784,7 +790,7 @@ install_dashboard_assets() {
     .view { display: none; }
     .view.active { display: block; }
     /* Config Editor */
-    textarea { background: #0b0e14; color: #a3b3bc; border: 1px solid #30363d; font-family: monospace; width: 100%; height: 500px; padding: 1rem; border-radius: 0.5rem; outline: none; }
+    textarea { background: #0b0e14 !important; color: #e2e8f0; border: 1px solid #30363d; font-family: monospace; width: 100%; height: 500px; padding: 1rem; border-radius: 0.5rem; outline: none; }
     /* Logs */
     #logs-out { background: #000; color: #4ade80; font-family: monospace; height: 500px; overflow-y: auto; padding: 1rem; border-radius: 0.5rem; font-size: 13px; }
 </style>
@@ -792,14 +798,14 @@ install_dashboard_assets() {
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display transition-colors duration-300">
 <div class="flex h-screen overflow-hidden">
 <!-- Sidebar -->
-<aside class="w-64 flex-shrink-0 bg-background-light dark:bg-[#0a0c10] border-r border-slate-200 dark:border-slate-800 flex flex-col">
+<aside class="w-64 flex-shrink-0 bg-background-light dark:bg-[#0a0c10] border-r border-slate-200 dark:border-slate-800 flex flex-col hidden md:flex">
     <div class="p-6 flex items-center gap-3">
         <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
             <span class="material-symbols-outlined">subway</span>
         </div>
         <div>
             <h1 class="text-lg font-bold tracking-tight">PicoTun <span class="text-primary">Pro</span></h1>
-            <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.0.3</p>
+            <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.1.0</p>
         </div>
     </div>
     <nav class="flex-1 px-4 space-y-1">
@@ -821,23 +827,7 @@ install_dashboard_assets() {
         </a>
     </nav>
     
-    <!-- Global Control (Visual Only for now, could be hooked up) -->
-    <div class="p-4 mt-auto">
-        <div class="glass-card rounded-xl p-4 border border-slate-200 dark:border-slate-800">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Global Control</span>
-                <div class="w-2 h-2 rounded-full bg-accent-green status-pulse"></div>
-            </div>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium">Global Proxy</span>
-                    <button class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-primary">
-                        <span class="translate-x-4 pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+
 </aside>
 
 <!-- Main Content -->
@@ -845,6 +835,9 @@ install_dashboard_assets() {
     <!-- Header -->
     <header class="h-16 flex-shrink-0 flex items-center justify-between px-8 bg-background-light dark:bg-background-dark/50 border-b border-slate-200 dark:border-slate-800 backdrop-blur-md z-10">
         <div class="flex items-center gap-4">
+            <button class="md:hidden p-2 text-slate-500 hover:text-primary transition-colors" onclick="toggleSidebar()">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
             <h2 class="text-xl font-bold tracking-tight" id="page-title">Dashboard Overview</h2>
             <span class="bg-accent-green/10 text-accent-green px-2.5 py-0.5 rounded-full text-xs font-bold border border-accent-green/20">System Healthy</span>
         </div>
@@ -941,16 +934,35 @@ install_dashboard_assets() {
                             </tr>
                         </thead>
                         <tbody id="sessions-table" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
-                    </table>
-                </div>
-            </div>
         </div>
 
         <!-- TUNNELS VIEW -->
         <div id="view-tunnels" class="view">
-             <div class="glass-card rounded-xl p-6">
-                 <h3 class="text-lg font-bold mb-4">All Tunnels</h3>
-                 <p class="text-slate-500">List of all active sessions and tunnels.</p>
+             <div class="glass-card rounded-xl p-6 mb-6">
+                 <div class="flex items-center justify-between mb-4">
+                     <div>
+                        <h3 class="text-lg font-bold">Tunnel Management</h3>
+                        <p class="text-slate-500">Active sessions and connections.</p>
+                     </div>
+                     <button class="p-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors" onclick="refreshData()">
+                        <span class="material-symbols-outlined">refresh</span>
+                     </button>
+                 </div>
+                 
+                 <div class="overflow-x-auto rounded-lg border border-slate-700/50">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 dark:bg-surface-dark/50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
+                                <th class="px-6 py-3">Protocol</th>
+                                <th class="px-6 py-3">Endpoint</th>
+                                <th class="px-6 py-3">Stats</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3">Uptime</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessions-table" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
              </div>
         </div>
 
@@ -1003,6 +1015,17 @@ function setView(id) {
 
     if(id === 'logs') startLogs();
     if(id === 'settings') loadConfig();
+}
+
+function toggleSidebar() {
+    const s = document.querySelector('aside');
+    if(s.classList.contains('hidden')) {
+        s.classList.remove('hidden');
+        s.classList.add('fixed', 'inset-y-0', 'left-0', 'z-50', 'shadow-2xl');
+    } else {
+        s.classList.add('hidden');
+        s.classList.remove('fixed', 'inset-y-0', 'left-0', 'z-50', 'shadow-2xl');
+    }
 }
 
 function initChart() {
@@ -1377,6 +1400,7 @@ update_binary() {
     # Update Dashboard Assets if installed
     if [ -d "/var/lib/picotun/dashboard" ]; then
         echo -e "${YELLOW}Updating dashboard assets...${NC}"
+        rm -rf "/var/lib/picotun/dashboard"
         install_dashboard_assets
         echo -e "${GREEN}✓ Dashboard updated${NC}"
     fi
