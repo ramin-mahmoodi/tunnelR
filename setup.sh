@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.5)..."
+    echo "Creating Dashboard Assets (v3.5.8)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,10 +859,9 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.5</title>
+    <title>TunnelR v3.5.8</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <style>
         :root {
             --bg-body: #0f172a;
@@ -888,6 +887,26 @@ install_dashboard_assets() {
         .icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        
+        /* Code Editor Style */
+        .code-editor {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            background-color: #0d1117;
+            color: #e6edf3;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            width: 100%;
+            height: 600px;
+            padding: 16px;
+            resize: vertical;
+            outline: none;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow-x: auto;
+        }
+        .code-editor:focus { border-color: #3b82f6; ring: 1px solid #3b82f6; }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
@@ -896,7 +915,7 @@ install_dashboard_assets() {
     <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col hidden md:flex" style="background-color: var(--bg-nav);">
         <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">T</div>
-            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.5</span></h1>
+            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.8</span></h1>
         </div>
 
         <nav class="flex-1 px-4 space-y-2 mt-6">
@@ -910,7 +929,7 @@ install_dashboard_assets() {
             </button>
             <button onclick="setView('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
                 <svg class="icon w-5 h-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                Configuration
+                Editor
             </button>
         </nav>
     </aside>
@@ -982,7 +1001,7 @@ install_dashboard_assets() {
                         <div class="mt-4 text-xs text-slate-500">Since run started</div>
                     </div>
 
-                    <!-- Sessions (Restored Volume Display) -->
+                    <!-- Sessions (Volume Swapped) -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
                         <div class="flex justify-between items-start">
                             <div>
@@ -995,18 +1014,18 @@ install_dashboard_assets() {
                         </div>
                          <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-slate-700/50 pt-2">
                              <div>
-                                <span class="text-slate-500 block">Total Sent</span>
+                                <span class="text-slate-500 block">Total Upload</span>
                                 <span id="vol-sent" class="text-blue-400">0 B</span>
                              </div>
                              <div>
-                                <span class="text-slate-500 block">Total Recv</span>
+                                <span class="text-slate-500 block">Total Download</span>
                                 <span id="vol-recv" class="text-emerald-400">0 B</span>
                              </div>
                          </div>
                     </div>
                 </div>
 
-                <!-- Traffic Chart (Maintained v3.5.4 design) -->
+                <!-- Traffic Chart -->
                 <div class="card p-6 mb-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
@@ -1028,7 +1047,7 @@ install_dashboard_assets() {
                 </div>
             </div>
 
-             <!-- VIEW: LOGS & SETTINGS (Unchanged) -->
+            <!-- VIEW: LOGS -->
             <div id="view-logs" class="view">
                 <div class="card flex flex-col h-[calc(100vh-160px)] border-slate-700/50">
                     <div class="p-4 border-b border-slate-700/50 flex justify-between bg-slate-800/30 rounded-t-xl items-center">
@@ -1048,11 +1067,12 @@ install_dashboard_assets() {
                 </div>
             </div>
 
+            <!-- VIEW: SETTINGS (RAW EDITOR RESTORED) -->
             <div id="view-settings" class="view">
                 <div class="flex justify-between items-center mb-8">
                     <div>
-                        <h3 class="text-2xl font-bold text-white">Configuration</h3>
-                        <p class="text-slate-500 text-sm mt-1">Manage global tunnel settings</p>
+                        <h3 class="text-2xl font-bold text-white">Configuration Editor</h3>
+                        <p class="text-slate-500 text-sm mt-1">Directly edit the YAML configuration file</p>
                     </div>
                     <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
@@ -1060,68 +1080,12 @@ install_dashboard_assets() {
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- General -->
-                    <div class="card p-6 space-y-6">
-                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-slate-700/50 pb-3">General Settings</h4>
-                        <div class="grid grid-cols-2 gap-5">
-                            <div><label class="label">Mode</label><input disabled id="f-mode" class="input disabled"></div>
-                            <div><label class="label">Transport</label><select id="f-transport" class="input">
-                                <option value="httpmux">httpmux</option><option value="httpsmux">httpsmux</option>
-                                <option value="tcpmux">tcpmux</option><option value="wsmux">wsmux</option><option value="wssmux">wssmux</option>
-                            </select></div>
-                            <div class="col-span-2"><label class="label">Listen Address</label><input id="f-listen" class="input font-mono"></div>
-                            <div class="col-span-2"><label class="label">PSK (Secret Key)</label><input type="password" id="f-psk" class="input font-mono"></div>
-                        </div>
-                    </div>
-
-                    <!-- TLS & Mimic -->
-                    <div class="card p-6 space-y-6">
-                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-slate-700/50 pb-3">TLS & Mimicry</h4>
-                        <div class="grid grid-cols-1 gap-5">
-                            <div class="grid grid-cols-2 gap-5">
-                                <div><label class="label">Cert File</label><input id="f-cert" class="input"></div>
-                                <div><label class="label">Key File</label><input id="f-key" class="input"></div>
-                            </div>
-                            <div><label class="label">Fake Domain (SNI)</label><input id="f-domain" class="input" placeholder="www.google.com"></div>
-                            <div><label class="label">User Agent</label><input id="f-ua" class="input text-xs" placeholder="Mozilla/5.0..."></div>
-                        </div>
-                    </div>
-
-                    <!-- Smux & Obfuscation -->
-                    <div class="card p-6 space-y-6">
-                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-slate-700/50 pb-3">Smux & Obfuscation</h4>
-                        <div class="grid grid-cols-2 gap-5">
-                            <div><label class="label">Version</label><input type="number" id="f-smux-ver" class="input"></div>
-                            <div><label class="label">KeepAlive (s)</label><input type="number" id="f-smux-ka" class="input"></div>
-                            <div><label class="label">Max Stream</label><input type="number" id="f-smux-stream" class="input"></div>
-                            <div><label class="label">Max Recv</label><input type="number" id="f-smux-recv" class="input"></div>
-                            
-                            <div class="col-span-2 bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-                                <label class="flex items-center gap-3 text-sm text-white font-medium mb-3 cursor-pointer">
-                                    <input type="checkbox" id="f-obfs-en" class="rounded bg-slate-700 border-slate-600 text-blue-500 focus:ring-blue-500">
-                                    Enable Obfuscation (Padding)
-                                </label>
-                                <div class="flex gap-4">
-                                    <div class="flex-1"><label class="label text-xs">Min Pad</label><input type="number" id="f-obfs-min" class="input text-center"></div>
-                                    <div class="flex-1"><label class="label text-xs">Max Pad</label><input type="number" id="f-obfs-max" class="input text-center"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Advanced -->
-                    <div class="card p-6 space-y-6">
-                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest border-b border-slate-700/50 pb-3">Advanced TCP</h4>
-                        <div class="grid grid-cols-2 gap-5">
-                            <div><label class="label">TCP Buffer</label><input type="number" id="f-tcp-buf" class="input"></div>
-                            <div><label class="label">TCP KeepAlive</label><input type="number" id="f-tcp-ka" class="input"></div>
-                            <div class="col-span-2 pt-2">
-                                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" id="f-nodelay" class="rounded bg-slate-700 border-slate-600 text-blue-500 focus:ring-blue-500"> Enable TCP NoDelay</label>
-                            </div>
-                        </div>
-                    </div>
+                <div class="card p-0 overflow-hidden border-slate-700">
+                    <textarea id="config-editor" class="code-editor" spellcheck="false" placeholder="# Loading config..."></textarea>
                 </div>
+                <p class="mt-4 text-xs text-slate-500">
+                    <span class="text-yellow-500 font-bold">Warning:</span> Syntax errors may prevent the service from starting. Check logs if issues occur.
+                </p>
             </div>
 
         </div>
@@ -1130,7 +1094,6 @@ install_dashboard_assets() {
     <script>
         const $ = s => document.querySelector(s);
         let chart = null;
-        let config = {};
         
         function setView(id) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1180,9 +1143,11 @@ install_dashboard_assets() {
                      $('#svc-uptime').innerText = "00:00:00";
                 }
 
-                // Volume (Restored in Sessions Card)
-                $('#vol-sent').innerText = data.stats.sent_human;
-                $('#vol-recv').innerText = data.stats.recv_human;
+                // Volume (SWAPPED: User Perspective)
+                // Total Upload = Server Recv
+                // Total Download = Server Sent
+                $('#vol-sent').innerText = data.stats.recv_human; 
+                $('#vol-recv').innerText = data.stats.sent_human;
 
                 // Update Legend
                 const up = humanBytes(data.stats.speed_up || 0);
@@ -1268,66 +1233,31 @@ install_dashboard_assets() {
             return b.toFixed(1) + ' ' + u[i];
         }
 
-        // --- CONFIG LOADER & LOGS (Re-inject for safety) ---
+        // --- RAW CONFIG EDITOR ---
         async function loadConfig() {
-            const t = await (await fetch('/api/config')).text();
-            config = jsyaml.load(t);
-            if(!config) return;
-            setVal('mode', config.mode);
-            setVal('transport', config.transport);
-            setVal('listen', config.listen);
-            setVal('psk', config.psk);
-            setVal('cert', config.cert_file);
-            setVal('key', config.key_file);
-            const http = config.http_mimic || {};
-            setVal('domain', http.fake_domain);
-            setVal('ua', http.user_agent);
-            const smux = config.smux || {};
-            setVal('smux-ver', smux.version);
-            setVal('smux-ka', smux.keepalive);
-            setVal('smux-stream', smux.max_stream);
-            setVal('smux-recv', smux.max_recv);
-            const obfs = config.obfuscation || {};
-            $('#f-obfs-en').checked = obfs.enabled;
-            setVal('obfs-min', obfs.min_padding);
-            setVal('obfs-max', obfs.max_padding);
-            const adv = config.advanced || {};
-            setVal('tcp-buf', adv.tcp_read_buffer);
-            setVal('tcp-ka', adv.tcp_keepalive);
-            $('#f-nodelay').checked = adv.tcp_nodelay;
+            const r = await fetch('/api/config');
+            if(r.ok) {
+                const txt = await r.text();
+                $('#config-editor').value = txt;
+            } else {
+                $('#config-editor').value = '# Error loading config';
+            }
         }
-        function setVal(id, val) { const el = $(`#f-${id}`); if(el) el.value = (val !== undefined && val !== null) ? val : ''; }
+        
         async function saveConfig() {
-            if(!confirm('Apply changes and restart?')) return;
-            config.listen = $('#f-listen').value;
-            config.psk = $('#f-psk').value;
-            config.transport = $('#f-transport').value;
-            config.cert_file = $('#f-cert').value;
-            config.key_file = $('#f-key').value;
-            if(!config.http_mimic) config.http_mimic = {};
-            config.http_mimic.fake_domain = $('#f-domain').value;
-            config.http_mimic.user_agent = $('#f-ua').value;
-            if(!config.smux) config.smux = {};
-            config.smux.version = parseInt($('#f-smux-ver').value);
-            config.smux.keepalive = parseInt($('#f-smux-ka').value);
-            config.smux.max_stream = parseInt($('#f-smux-stream').value);
-            config.smux.max_recv = parseInt($('#f-smux-recv').value);
-            if(!config.obfuscation) config.obfuscation = {};
-            config.obfuscation.enabled = $('#f-obfs-en').checked;
-            config.obfuscation.min_padding = parseInt($('#f-obfs-min').value);
-            config.obfuscation.max_padding = parseInt($('#f-obfs-max').value);
-            if(!config.advanced) config.advanced = {};
-            config.advanced.tcp_read_buffer = parseInt($('#f-tcp-buf').value);
-            config.advanced.tcp_write_buffer = parseInt($('#f-tcp-buf').value); 
-            config.advanced.tcp_keepalive = parseInt($('#f-tcp-ka').value);
-            config.advanced.tcp_nodelay = $('#f-nodelay').checked;
-            const yaml = jsyaml.dump(config);
-            try {
+            if(!confirm('Save changes and RESTART service?')) return;
+            const yaml = $('#config-editor').value;
+             try {
                 const r = await fetch('/api/config', { method:'POST', body: yaml });
-                if(r.ok) { await fetch('/api/restart', { method:'POST' }); alert('Restarting...'); setTimeout(()=>location.reload(), 3000); } 
+                if(r.ok) { 
+                    await fetch('/api/restart', { method:'POST' }); 
+                    alert('Configuration saved. Service is restarting...'); 
+                    setTimeout(()=>location.reload(), 3000); 
+                } 
                 else { const txt = await r.text(); alert('Error: '+txt); }
             } catch(e) { alert(e); }
         }
+
         let logSrc;
         function initLogs() {
             if(logSrc) return;
@@ -1360,12 +1290,12 @@ install_dashboard_assets() {
             else d.style.display = d.classList.contains('log-'+window.logFilter) ? 'block' : 'none';
         }
     </script>
-    <style>.label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.05em; } .input { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 8px 12px; border-radius: 8px; font-size: 13px; transition: border-color 0.15s ease-in-out; } .input:focus { border-color: #3b82f6; ring: 2px solid #3b82f630; outline: none; } .input.disabled { opacity: 0.5; cursor: not-allowed; background-color: #1e293b; }</style>
 </body>
 </html>
 
 EOF
 }
+
 
 
 
