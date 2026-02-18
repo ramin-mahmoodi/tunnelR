@@ -44,7 +44,7 @@ func StartDashboard(cfg DashboardConfig, mode, version string, client *Client, s
 	}
 	addr := cfg.Listen
 	if addr == "" {
-		addr = "0.0.0.0:8080"
+		addr = "0.0.0.0:8585"
 	}
 	// Default credentials if missing
 	if cfg.User == "" {

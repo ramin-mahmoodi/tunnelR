@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ═══════════════════════════════════════════════════════════════
 
-SCRIPT_VERSION="3.4.1"
+SCRIPT_VERSION="3.4.2"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -476,10 +476,10 @@ EOF
     # Firewall
     if command -v ufw &>/dev/null; then
         ufw allow ${LISTEN_PORT}/tcp >/dev/null 2>&1
-        ufw allow 8080/tcp >/dev/null 2>&1
+        ufw allow 8585/tcp >/dev/null 2>&1
     elif command -v firewall-cmd &>/dev/null; then
         firewall-cmd --permanent --add-port=${LISTEN_PORT}/tcp >/dev/null 2>&1
-        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --permanent --add-port=8585/tcp >/dev/null 2>&1
         firewall-cmd --reload >/dev/null 2>&1
     fi
 
@@ -609,9 +609,9 @@ EOF
 
     # Firewall (if needed for dashboard)
     if command -v ufw &>/dev/null; then
-        ufw allow 8080/tcp >/dev/null 2>&1
+        ufw allow 8585/tcp >/dev/null 2>&1
     elif command -v firewall-cmd &>/dev/null; then
-        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --permanent --add-port=8585/tcp >/dev/null 2>&1
         firewall-cmd --reload >/dev/null 2>&1
     fi
 
@@ -708,7 +708,7 @@ verbose: ${VERBOSE}
 
 dashboard:
   enabled: true
-  listen: "0.0.0.0:8080"
+  listen: "0.0.0.0:8585"
 
     [ -n "$CERT_FILE" ] && cat >> "$CONFIG_FILE" << EOF
 
@@ -762,10 +762,10 @@ EOF
     # Firewall
     if command -v ufw &>/dev/null; then
         ufw allow ${LISTEN_PORT}/tcp >/dev/null 2>&1
-        ufw allow 8080/tcp >/dev/null 2>&1
+        ufw allow 8585/tcp >/dev/null 2>&1
     elif command -v firewall-cmd &>/dev/null; then
         firewall-cmd --permanent --add-port=${LISTEN_PORT}/tcp >/dev/null 2>&1
-        firewall-cmd --permanent --add-port=8080/tcp >/dev/null 2>&1
+        firewall-cmd --permanent --add-port=8585/tcp >/dev/null 2>&1
         firewall-cmd --reload >/dev/null 2>&1
     fi
 
