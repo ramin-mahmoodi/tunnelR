@@ -1372,6 +1372,15 @@ update_binary() {
 
     download_binary
 
+    download_binary
+
+    # Update Dashboard Assets if installed
+    if [ -d "/var/lib/picotun/dashboard" ]; then
+        echo -e "${YELLOW}Updating dashboard assets...${NC}"
+        install_dashboard_assets
+        echo -e "${GREEN}✓ Dashboard updated${NC}"
+    fi
+
     # Restart services if running
     for svc in picotun-server picotun-client; do
         if systemctl is-active "$svc" &>/dev/null; then
