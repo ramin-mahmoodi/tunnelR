@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ===============================================================
 
-SCRIPT_VERSION="3.5.7"
+SCRIPT_VERSION="3.5.9"
 
 
 # Colors & Styling
@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.8)..."
+    echo "Creating Dashboard Assets (v3.5.9)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,185 +859,237 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.8</title>
+    <title>TunnelR v3.5.9</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         :root {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --bg-nav: #1e293b;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-            --accent: #3b82f6;
-            --border: #334155;
+            --bg-body: #0d1117;     /* Very dark blue-grey */
+            --bg-card: #161b22;     /* Slightly lighter card bg */
+            --bg-nav: #161b22;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --border: #30363d;
         }
-        body { background-color: var(--bg-body); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        body { background-color: var(--bg-body); color: var(--text-main); font-family: 'Inter', sans-serif; }
+        
+        /* Premium Card Style */
+        .premium-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .premium-card:hover { border-color: #58a6ff; }
+        
+        .card-label {
+            font-size: 0.75rem; /* 12px */
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .card-value {
+            font-size: 1.875rem; /* 30px */
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+        
+        .card-subtext {
+            font-size: 0.875rem; /* 14px */
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        
+        .card-footer-text {
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            color: var(--text-muted);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .icon-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        .icon-blue { background: rgba(56, 139, 253, 0.15); color: #58a6ff; }
+        .icon-green { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+        .icon-orange { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+        .icon-purple { background: rgba(163, 113, 247, 0.15); color: #a371f7; }
+
+        .progress-track {
+            background-color: #21262d;
+            height: 6px;
+            border-radius: 9999px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+        .progress-bar { height: 100%; border-radius: 9999px; transition: width 0.5s ease-out; }
+        .bar-blue { background-color: #58a6ff; }
+        .bar-green { background-color: #3fb950; }
+
         .view { display: none; }
         .view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-body); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        /* Nav */
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .nav-btn:hover { background: #21262d; color: #fff; }
+        .nav-btn.active { background: #1f6feb; color: #fff; }
 
-        .icon-box { background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 8px; color: #60a5fa; }
-        .icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-        
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        
-        /* Code Editor Style */
         .code-editor {
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-family: 'Consolas', 'Monaco', monospace;
             font-size: 13px;
-            line-height: 1.5;
             background-color: #0d1117;
             color: #e6edf3;
-            border: 1px solid #30363d;
+            border: 1px solid var(--border);
             border-radius: 6px;
             width: 100%;
             height: 600px;
             padding: 16px;
             resize: vertical;
             outline: none;
-            white-space: pre;
-            overflow-wrap: normal;
-            overflow-x: auto;
         }
-        .code-editor:focus { border-color: #3b82f6; ring: 1px solid #3b82f6; }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col hidden md:flex" style="background-color: var(--bg-nav);">
-        <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">T</div>
-            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.8</span></h1>
+    <aside class="w-64 border-r border-gray-800 flex flex-col hidden md:flex" style="background: #0d1117;">
+        <div class="h-16 flex items-center px-6 border-b border-gray-800">
+             <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
+                <h1 class="font-bold text-lg text-white">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.9</span></h1>
+             </div>
         </div>
 
-        <nav class="flex-1 px-4 space-y-2 mt-6">
-            <button onclick="setView('dash')" id="nav-dash" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-white bg-blue-600 shadow-lg shadow-blue-900/20">
-                <svg class="icon w-5 h-5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                Overview
+        <nav class="flex-1 px-4 py-6 space-y-1">
+            <button onclick="setView('dash')" id="nav-dash" class="nav-btn active">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                Dashboard
             </button>
-            <button onclick="setView('logs')" id="nav-logs" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
-                <svg class="icon w-5 h-5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                Real-time Logs
+            <button onclick="setView('logs')" id="nav-logs" class="nav-btn">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                Live Logs
             </button>
-            <button onclick="setView('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
-                <svg class="icon w-5 h-5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <button onclick="setView('settings')" id="nav-settings" class="nav-btn">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Editor
             </button>
         </nav>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-900">
-        <!-- Top Bar -->
-        <header class="h-16 border-b border-slate-700/50 flex items-center justify-between px-8 bg-slate-800/50 backdrop-blur-sm sticky top-0 z-10">
-            <h2 class="text-xl font-bold text-white tracking-tight" id="page-title">Dashboard</h2>
-            <div class="flex items-center gap-4">
-                <span class="text-xs font-mono text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Running
-                </span>
-            </div>
-        </header>
-
-        <div class="flex-1 overflow-y-auto p-8 space-y-8">
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <div class="max-w-7xl mx-auto w-full p-8 space-y-8">
             
             <!-- VIEW: DASHBOARD -->
             <div id="view-dash" class="view active">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     
                     <!-- CPU Card -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">CPU Usage</div>
-                                <div class="text-3xl font-bold text-white tabular-nums"><span id="cpu-val">0</span>%</div>
-                            </div>
-                            <div class="icon-box text-blue-400 bg-blue-500/10">
-                                <svg class="icon"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                            </div>
+                    <div class="premium-card">
+                        <div class="icon-box icon-blue">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
                         </div>
-                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                            <div id="cpu-bar" class="bg-blue-500 h-full transition-all duration-500" style="width:0%"></div>
+                        <div class="card-label">CPU Usage</div>
+                        <div class="card-value"><span id="cpu-val">0</span>%</div>
+                        <div class="progress-track">
+                            <div id="cpu-bar" class="progress-bar bar-blue" style="width: 0%"></div>
+                        </div>
+                        <div class="card-footer-text">
+                            <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                            <span>Load Avg: <span id="load-avg" class="text-gray-400">0.00, 0.00</span></span>
                         </div>
                     </div>
 
                     <!-- RAM Card -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM</div>
-                                <div class="text-3xl font-bold text-white tabular-nums text-sm flex items-baseline gap-1">
-                                    <span id="ram-used">0</span> / <span id="ram-total">0</span>
-                                </div>
-                            </div>
-                            <div class="icon-box text-emerald-400 bg-emerald-500/10">
-                                <svg class="icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                            </div>
+                    <div class="premium-card">
+                        <div class="icon-box icon-green">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
                         </div>
-                        <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                            <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
+                        <div class="card-label">RAM Usage</div>
+                        <div class="card-value">
+                            <span id="ram-used">0</span> <span class="text-lg text-gray-500 font-medium">/ <span id="ram-total">0</span></span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="ram-bar" class="progress-bar bar-green" style="width: 0%"></div>
+                        </div>
+                        <div class="card-footer-text">
+                            <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-green-500">Good condition</span>
                         </div>
                     </div>
 
                     <!-- Service Uptime -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Service Uptime</div>
-                                <div class="text-2xl font-bold text-white tabular-nums mt-1" id="svc-uptime">00:00:00</div>
-                            </div>
-                            <div class="icon-box text-orange-400 bg-orange-500/10">
-                                <svg class="icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            </div>
+                    <div class="premium-card">
+                        <div class="icon-box icon-orange">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
-                        <div class="mt-4 text-xs text-slate-500">Since run started</div>
+                        <div class="card-label">Service Uptime</div>
+                        <div class="card-value text-2xl" id="svc-uptime">00:00:00</div>
+                         <div class="w-full h-6"></div> <!-- Spacer -->
+                        <div class="card-footer-text" style="margin-top:2px">
+                            <span>Started: <span id="start-time" class="text-gray-400">...</span></span>
+                        </div>
                     </div>
 
-                    <!-- Sessions (Volume Swapped) -->
-                    <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Active Sessions</div>
-                                <div class="text-3xl font-bold text-white tabular-nums mt-1" id="sess-count">0</div>
-                            </div>
-                            <div class="icon-box text-purple-400 bg-purple-500/10">
-                                <svg class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            </div>
+                    <!-- Sessions -->
+                    <div class="premium-card">
+                        <div class="icon-box icon-purple">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                         </div>
-                         <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-slate-700/50 pt-2">
-                             <div>
-                                <span class="text-slate-500 block">Total Upload</span>
-                                <span id="vol-sent" class="text-blue-400">0 B</span>
-                             </div>
-                             <div>
-                                <span class="text-slate-500 block">Total Download</span>
-                                <span id="vol-recv" class="text-emerald-400">0 B</span>
-                             </div>
-                         </div>
+                        <div class="card-label">Active Sessions</div>
+                        <div class="card-value" id="sess-count">0</div>
+                        <div class="w-full h-6"></div> <!-- Spacer -->
+                        <div class="card-footer-text" style="justify-content: space-between; margin-top:2px">
+                            <span class="text-blue-400">↑ <span id="vol-sent">0 B</span></span>
+                            <span class="text-green-400">↓ <span id="vol-recv">0 B</span></span>
+                        </div>
                     </div>
+
                 </div>
 
                 <!-- Traffic Chart -->
-                <div class="card p-6 mb-6">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div class="premium-card mt-6">
+                    <div class="flex justify-between items-center mb-6">
                         <div>
                             <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
-                            <p class="text-slate-500 text-sm">Real-time throughput monitor</p>
                         </div>
-                        <div class="flex gap-6 mt-4 md:mt-0 text-sm font-medium">
-                            <div class="flex items-center text-slate-300">
-                                <span class="legend-dot bg-blue-500"></span> Upload (<span id="lg-up" class="font-mono">0 B/s</span>)
+                         <div class="flex gap-6 text-sm">
+                            <div class="flex items-center text-gray-400 gap-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-500"></span> Upload <span id="lg-up" class="font-mono text-white">0 B/s</span>
                             </div>
-                            <div class="flex items-center text-slate-300">
-                                <span class="legend-dot bg-emerald-500"></span> Download (<span id="lg-down" class="font-mono">0 B/s</span>)
+                            <div class="flex items-center text-gray-400 gap-2">
+                                <span class="w-3 h-3 rounded-full bg-green-500"></span> Download <span id="lg-down" class="font-mono text-white">0 B/s</span>
                             </div>
                         </div>
                     </div>
@@ -1049,43 +1101,27 @@ install_dashboard_assets() {
 
             <!-- VIEW: LOGS -->
             <div id="view-logs" class="view">
-                <div class="card flex flex-col h-[calc(100vh-160px)] border-slate-700/50">
-                    <div class="p-4 border-b border-slate-700/50 flex justify-between bg-slate-800/30 rounded-t-xl items-center">
-                        <span class="font-bold text-sm uppercase text-slate-300 tracking-wide">System Logs</span>
-                        <div class="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                            <button onclick="setLogFilter('all')" class="px-3 py-1 rounded text-xs font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors" id="btn-log-all">All</button>
-                            <button onclick="setLogFilter('warn')" class="px-3 py-1 rounded text-xs font-medium text-yellow-500 hover:bg-slate-700 transition-colors" id="btn-log-warn">Warn</button>
-                            <button onclick="setLogFilter('error')" class="px-3 py-1 rounded text-xs font-medium text-red-500 hover:bg-slate-700 transition-colors" id="btn-log-error">Error</button>
+                 <div class="premium-card h-[calc(100vh-120px)] flex flex-col p-0 overflow-hidden">
+                    <div class="p-4 border-b border-gray-800 flex justify-between bg-black/20">
+                        <span class="font-bold text-sm text-gray-300">SYSTEM LOGS</span>
+                        <div class="flex bg-gray-900 rounded p-1 border border-gray-700">
+                             <button onclick="setLogFilter('all')" class="px-3 py-1 text-xs rounded hover:bg-gray-800 text-white" id="btn-log-all">All</button>
+                             <button onclick="setLogFilter('error')" class="px-3 py-1 text-xs rounded hover:bg-gray-800 text-red-400" id="btn-log-error">Errors</button>
                         </div>
                     </div>
-                    <div id="logs-container" class="flex-1 overflow-y-auto p-4 font-mono text-xs text-slate-300 space-y-1.5 bg-[#0d1117]/50">
-                        <div class="text-center text-slate-500 mt-20 flex flex-col items-center gap-2">
-                            <div class="loader"></div>
-                            <span>Connecting to log stream...</span>
-                        </div>
-                    </div>
-                </div>
+                    <div id="logs-container" class="flex-1 overflow-y-auto p-4 font-mono text-xs text-gray-300 space-y-1 bg-[#0d1117]"></div>
+                 </div>
             </div>
 
-            <!-- VIEW: SETTINGS (RAW EDITOR RESTORED) -->
+            <!-- VIEW: SETTINGS -->
             <div id="view-settings" class="view">
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h3 class="text-2xl font-bold text-white">Configuration Editor</h3>
-                        <p class="text-slate-500 text-sm mt-1">Directly edit the YAML configuration file</p>
-                    </div>
-                    <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        Save & Restart
-                    </button>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Configuration</h3>
+                    <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/50">Save & Restart</button>
                 </div>
-
-                <div class="card p-0 overflow-hidden border-slate-700">
-                    <textarea id="config-editor" class="code-editor" spellcheck="false" placeholder="# Loading config..."></textarea>
+                <div class="premium-card p-0 overflow-hidden">
+                    <textarea id="config-editor" class="code-editor" spellcheck="false"></textarea>
                 </div>
-                <p class="mt-4 text-xs text-slate-500">
-                    <span class="text-yellow-500 font-bold">Warning:</span> Syntax errors may prevent the service from starting. Check logs if issues occur.
-                </p>
             </div>
 
         </div>
@@ -1094,18 +1130,12 @@ install_dashboard_assets() {
     <script>
         const $ = s => document.querySelector(s);
         let chart = null;
-        
+
         function setView(id) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => {
-                n.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
-                n.classList.add('text-slate-400', 'hover:bg-slate-800');
-            });
+            document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
             $(`#view-${id}`).classList.add('active');
-            const nav = $(`#nav-${id}`);
-            nav.classList.remove('text-slate-400', 'hover:bg-slate-800');
-            nav.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
-            $('#page-title').innerText = nav.innerText.trim();
+            $(`#nav-${id}`).classList.add('active');
             if(id === 'logs') initLogs();
             if(id === 'settings') loadConfig();
         }
@@ -1117,6 +1147,7 @@ install_dashboard_assets() {
                 
                 $('#cpu-val').innerText = data.cpu.toFixed(1);
                 $('#cpu-bar').style.width = Math.min(data.cpu, 100) + '%';
+                if(data.load_avg) $('#load-avg').innerText = data.load_avg.join(', ');
                 
                 // RAM
                 const usedBytes = data.ram_used || 0;
@@ -1129,57 +1160,47 @@ install_dashboard_assets() {
                      $('#ram-total').innerText = totalGB + 'GB';
                      const ramPct = (usedBytes / totalBytes) * 100;
                      $('#ram-bar').style.width = Math.min(ramPct, 100) + '%';
-                } else {
-                    $('#ram-used').innerText = humanBytes(data.ram_val);
-                    $('#ram-total').innerText = 'System';
                 }
                 
-                $('#sess-count').innerText = data.stats.total_conns;
+                $('#sess-count').innerText = data.stats.total_conns || 0;
                 
-                // Service Uptime
-                if (data.uptime_s) {
-                     $('#svc-uptime').innerText = formatUptime(data.uptime_s);
-                } else {
-                     $('#svc-uptime').innerText = "00:00:00";
+                // Uptime
+                if (data.uptime_s) $('#svc-uptime').innerText = formatUptime(data.uptime_s);
+                if (data.start_time) {
+                    const start = new Date(data.start_time);
+                    $('#start-time').innerText = start.toLocaleDateString() + ' ' + start.toLocaleTimeString();
                 }
 
-                // Volume (SWAPPED: User Perspective)
-                // Total Upload = Server Recv
-                // Total Download = Server Sent
-                $('#vol-sent').innerText = data.stats.recv_human; 
-                $('#vol-recv').innerText = data.stats.sent_human;
+                // Volume (Swapped)
+                $('#vol-sent').innerText = data.stats.recv_human || '0 B'; 
+                $('#vol-recv').innerText = data.stats.sent_human || '0 B';
 
-                // Update Legend
+                // Chart
                 const up = humanBytes(data.stats.speed_up || 0);
                 const down = humanBytes(data.stats.speed_down || 0);
                 $('#lg-up').innerText = up + '/s';
                 $('#lg-down').innerText = down + '/s';
-
                 updateChart(data.stats.speed_down || 0, data.stats.speed_up || 0);
 
-            } catch(e) {/* quiet */}
+            } catch(e) {}
         }, 1000);
 
         function formatUptime(s) {
-            const days = Math.floor(s / 86400);
-            s %= 86400;
-            const hours = Math.floor(s / 3600);
-            s %= 3600;
-            const minutes = Math.floor(s / 60);
-            s = Math.floor(s % 60);
-            
-            let res = "";
-            if(days > 0) res += `${days}d `;
-            res += `${String(hours).padStart(2, '0')}:`;
-            res += `${String(minutes).padStart(2, '0')}:`;
-            res += `${String(s).padStart(2, '0')}`;
-            return res;
+            const d = Math.floor(s / 86400); s %= 86400;
+            const h = Math.floor(s / 3600); s %= 3600;
+            const m = Math.floor(s / 60); s = Math.floor(s % 60);
+            return `${d}d ${h}h ${m}m`;
+        }
+        
+        function humanBytes(b) {
+            const u = ['B', 'KB', 'MB', 'GB'];
+            let i=0; while(b>=1024 && i<3){b/=1024;i++}
+            return b.toFixed(1)+' '+u[i];
         }
 
         function updateChart(rx, tx) {
             const now = new Date();
-            const timeLabel = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-
+            const lb = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
             if(!chart) {
                 const ctx = $('#trafficChart').getContext('2d');
                 chart = new Chart(ctx, {
@@ -1187,75 +1208,27 @@ install_dashboard_assets() {
                     data: {
                         labels: Array(30).fill(''),
                         datasets: [
-                            { label: 'Download', data: Array(30).fill(0), borderColor: '#10b981', backgroundColor: (ctx) => {
-                                const bg = ctx.chart.ctx.createLinearGradient(0,0,0,300);
-                                bg.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
-                                bg.addColorStop(1, 'rgba(16, 185, 129, 0)');
-                                return bg;
-                            }, fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 },
-                            { label: 'Upload', data: Array(30).fill(0), borderColor: '#3b82f6', backgroundColor: (ctx) => {
-                                const bg = ctx.chart.ctx.createLinearGradient(0,0,0,300);
-                                bg.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
-                                bg.addColorStop(1, 'rgba(59, 130, 246, 0)');
-                                return bg;
-                            }, fill:true, borderWidth: 2, pointRadius:0, tension: 0.4 }
+                            { label: 'DL', data: Array(30).fill(0), borderColor: '#3fb950', backgroundColor: 'rgba(63, 185, 80, 0.1)', fill:true, tension:0.4, borderWidth:2, pointRadius:0 },
+                            { label: 'UL', data: Array(30).fill(0), borderColor: '#58a6ff', backgroundColor: 'rgba(56, 139, 253, 0.1)', fill:true, tension:0.4, borderWidth:2, pointRadius:0 }
                         ]
                     },
-                    options: { 
-                        responsive: true, 
-                        maintainAspectRatio: false, 
-                        scales: { 
-                            x:{display:true, grid:{display:false}, ticks:{color:'#64748b', maxTicksLimit: 6} }, 
-                            y:{display:true, position:'right', grid:{color:'#1e293b'}, ticks:{color:'#64748b', callback: function(val){ return humanBytes(val) }} } 
-                        }, 
-                        plugins: { legend:{display:false} }, 
-                        animation: false, 
-                        interaction: {intersect: false} 
-                    }
+                    options: { responsive:true, maintainAspectRatio:false, scales:{x:{grid:{display:false}, ticks:{maxTicksLimit:6, color:'#8b949e'}}, y:{position:'right', grid:{color:'#30363d'}, ticks:{color:'#8b949e', callback:v=>humanBytes(v)}}}, plugins:{legend:{display:false}}, animation:false, interaction:{intersect:false} }
                 });
             }
-            
-            chart.data.labels.push(timeLabel);
-            chart.data.labels.shift();
-
-            chart.data.datasets[0].data.push(rx);
-            chart.data.datasets[1].data.push(tx);
-            chart.data.datasets[0].data.shift();
-            chart.data.datasets[1].data.shift();
+            chart.data.labels.push(lb); chart.data.labels.shift();
+            chart.data.datasets[0].data.push(rx); chart.data.datasets[0].data.shift();
+            chart.data.datasets[1].data.push(tx); chart.data.datasets[1].data.shift();
             chart.update();
         }
 
-        function humanBytes(b) {
-            if(b==0) return '0 B';
-            const u = ['B', 'KB', 'MB', 'GB'];
-            let i=0;
-            while(b >= 1024 && i < u.length-1) { b/=1024; i++; }
-            return b.toFixed(1) + ' ' + u[i];
-        }
-
-        // --- RAW CONFIG EDITOR ---
         async function loadConfig() {
             const r = await fetch('/api/config');
-            if(r.ok) {
-                const txt = await r.text();
-                $('#config-editor').value = txt;
-            } else {
-                $('#config-editor').value = '# Error loading config';
-            }
+            if(r.ok) $('#config-editor').value = await r.text();
         }
-        
         async function saveConfig() {
-            if(!confirm('Save changes and RESTART service?')) return;
-            const yaml = $('#config-editor').value;
-             try {
-                const r = await fetch('/api/config', { method:'POST', body: yaml });
-                if(r.ok) { 
-                    await fetch('/api/restart', { method:'POST' }); 
-                    alert('Configuration saved. Service is restarting...'); 
-                    setTimeout(()=>location.reload(), 3000); 
-                } 
-                else { const txt = await r.text(); alert('Error: '+txt); }
-            } catch(e) { alert(e); }
+            if(!confirm('Save & Restart?')) return;
+            const r = await fetch('/api/config', {method:'POST', body:$('#config-editor').value});
+            if(r.ok) { await fetch('/api/restart', {method:'POST'}); alert('Restarting...'); setTimeout(()=>location.reload(), 3000); }
         }
 
         let logSrc;
@@ -1265,12 +1238,7 @@ install_dashboard_assets() {
             logSrc = new EventSource('/api/logs/stream');
             logSrc.onmessage = e => {
                 const d = document.createElement('div');
-                const t = e.data;
-                d.textContent = t;
-                if(t.includes('ERR') || t.includes('fail')) d.className = 'text-red-400 border-l-2 border-red-500 pl-2 bg-red-400/10 rounded-r';
-                else if(t.includes('WARN')) d.className = 'text-yellow-400 border-l-2 border-yellow-500 pl-2 bg-yellow-400/10 rounded-r';
-                else d.className = 'text-slate-300 border-l-2 border-transparent pl-2 hover:bg-slate-800/50 rounded-r transition-colors';
-                d.classList.add(t.includes('ERR')||t.includes('fail') ? 'log-error' : (t.includes('WARN')?'log-warn':'log-info'));
+                d.textContent = e.data;
                 const c = $('#logs-container');
                 c.appendChild(d);
                 if(c.children.length > 200) c.removeChild(c.firstChild);
@@ -1279,15 +1247,13 @@ install_dashboard_assets() {
             };
         }
         window.logFilter = 'all';
-        function setLogFilter(f) { 
-            window.logFilter = f; 
-            document.querySelectorAll('#logs-container div').forEach(applyFilter); 
-            ['all','warn','error'].forEach(id => { $(`#btn-log-${id}`).classList.remove('bg-slate-700', 'text-white'); if(id === 'all') $(`#btn-log-${id}`).classList.add('text-slate-300'); });
-            $(`#btn-log-${f}`).classList.add('bg-slate-700', 'text-white');
-        }
+        function setLogFilter(f) { window.logFilter = f; document.querySelectorAll('#logs-container div').forEach(applyFilter); }
         function applyFilter(d) {
-            if(window.logFilter === 'all') d.style.display = 'block';
-            else d.style.display = d.classList.contains('log-'+window.logFilter) ? 'block' : 'none';
+             if(window.logFilter==='all') d.style.display='block';
+             else {
+                 const txt = d.textContent.toLowerCase();
+                 d.style.display = (window.logFilter==='error' && (txt.includes('err')||txt.includes('fail'))) ? 'block' : 'none';
+             }
         }
     </script>
 </body>
@@ -1295,6 +1261,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
