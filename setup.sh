@@ -916,24 +916,7 @@ install_dashboard_assets() {
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="glass-card rounded-xl overflow-hidden">
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    <h4 class="font-bold">Active Tunnels</h4>
-                    <button class="text-sm font-semibold text-primary hover:underline">Manage All</button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50/50 dark:bg-surface-dark/50 text-slate-500 uppercase text-[10px] tracking-widest font-bold">
-                                <th class="px-6 py-3">Protocol</th>
-                                <th class="px-6 py-3">Endpoint</th>
-                                <th class="px-6 py-3">Stats</th>
-                                <th class="px-6 py-3">Status</th>
-                                <th class="px-6 py-3">Uptime</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessions-table" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
+
         </div>
 
         <!-- TUNNELS VIEW -->
