@@ -807,7 +807,7 @@ install_dashboard_assets() {
         </div>
         <div>
             <h1 class="text-lg font-bold tracking-tight">PicoTun <span class="text-primary">Pro</span></h1>
-            <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.1.0</p>
+            <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">v3.2.0</p>
         </div>
     </div>
     <nav class="flex-1 px-4 space-y-1">
@@ -893,7 +893,6 @@ install_dashboard_assets() {
                             <span class="material-symbols-outlined">schedule</span>
                         </div>
                     </div>
-                </div>
                 </div>
                 <!-- Latency -->
                 <div class="glass-card rounded-xl p-6 relative overflow-hidden group">
