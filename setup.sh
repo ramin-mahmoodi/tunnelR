@@ -1,11 +1,11 @@
-#!/bin/bash
+﻿#!/bin/bash
 
-# ═══════════════════════════════════════════════════════════════
-# PicoTun — Dagger-Compatible Reverse Tunnel
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# PicoTun â€” Dagger-Compatible Reverse Tunnel
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
-# ═══════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-SCRIPT_VERSION="3.4.2"
+SCRIPT_VERSION="3.4.3"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,15 +25,15 @@ GITHUB_REPO="ramin-mahmoodi/tunnelR"
 # Use 'latest' endpoint to rigidly respect the user's "Latest Release" on GitHub
 LATEST_RELEASE_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 
-# ───────────── Banner & Checks ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Banner & Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 show_banner() {
     clear
     echo -e "${CYAN}"
-    echo "  ╔═══════════════════════════════════════╗"
-    echo "  ║           TunnelR (PicoTun)           ║"
-    echo "  ║          Script v${SCRIPT_VERSION}          ║"
-    echo "  ╚═══════════════════════════════════════╝"
+    echo "  â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—"
+    echo "  â•‘           TunnelR (PicoTun)           â•‘"
+    echo "  â•‘          Script v${SCRIPT_VERSION}          â•‘"
+    echo "  â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•"
     echo -e "${NC}"
     echo -e "  ${PURPLE}GitHub: github.com/${GITHUB_REPO}${NC}"
     echo ""
@@ -41,20 +41,20 @@ show_banner() {
 
 check_root() {
     if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}❌ This script must be run as root${NC}"
+        echo -e "${RED}âŒ This script must be run as root${NC}"
         exit 1
     fi
 }
 
 install_dependencies() {
-    echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+    echo -e "${YELLOW}ðŸ“¦ Installing dependencies...${NC}"
     if command -v apt &>/dev/null; then
         apt update -qq 2>/dev/null
         apt install -y wget curl tar openssl iproute2 > /dev/null 2>&1
     elif command -v yum &>/dev/null; then
         yum install -y wget curl tar openssl iproute > /dev/null 2>&1
     fi
-    echo -e "${GREEN}✓ Dependencies ready${NC}"
+    echo -e "${GREEN}âœ“ Dependencies ready${NC}"
 }
 
 detect_arch() {
@@ -62,7 +62,7 @@ detect_arch() {
     case $ARCH in
         x86_64|amd64) ARCH="amd64" ;;
         aarch64|arm64) ARCH="arm64" ;;
-        *) echo -e "${RED}❌ Unsupported architecture: $ARCH${NC}"; exit 1 ;;
+        *) echo -e "${RED}âŒ Unsupported architecture: $ARCH${NC}"; exit 1 ;;
     esac
 }
 
@@ -75,24 +75,24 @@ get_current_version() {
     fi
 }
 
-# ───────────── Download Binary ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Download Binary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 download_binary() {
-    echo -e "${YELLOW}⬇️  Downloading PicoTun...${NC}"
+    echo -e "${YELLOW}â¬‡ï¸  Downloading PicoTun...${NC}"
     mkdir -p "$INSTALL_DIR"
     detect_arch
 
-    echo -e "${CYAN}🔍 Fetching latest release...${NC}"
+    echo -e "${CYAN}ðŸ” Fetching latest release...${NC}"
     # Parse tag_name from the specific 'latest' release object
     LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$LATEST_VERSION" ]; then
-        echo -e "${YELLOW}⚠️  Could not fetch version, trying v1.8.8${NC}"
+        echo -e "${YELLOW}âš ï¸  Could not fetch version, trying v1.8.8${NC}"
         LATEST_VERSION="v1.8.8"
     fi
 
     TAR_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/picotun-${LATEST_VERSION}-linux-${ARCH}.tar.gz"
-    echo -e "${CYAN}📦 Version: ${GREEN}${LATEST_VERSION}${CYAN} (${ARCH})${NC}"
+    echo -e "${CYAN}ðŸ“¦ Version: ${GREEN}${LATEST_VERSION}${CYAN} (${ARCH})${NC}"
 
     # Backup
     [ -f "$INSTALL_DIR/$BINARY_NAME" ] && cp "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/${BINARY_NAME}.bak"
@@ -104,17 +104,17 @@ download_binary() {
         chmod +x "$INSTALL_DIR/$BINARY_NAME"
         rm -rf "$TMP_DIR"
         rm -f "$INSTALL_DIR/${BINARY_NAME}.bak"
-        echo -e "${GREEN}✓ PicoTun ${LATEST_VERSION} installed${NC}"
+        echo -e "${GREEN}âœ“ PicoTun ${LATEST_VERSION} installed${NC}"
     else
         rm -rf "$TMP_DIR"
         # Restore backup
         [ -f "$INSTALL_DIR/${BINARY_NAME}.bak" ] && mv "$INSTALL_DIR/${BINARY_NAME}.bak" "$INSTALL_DIR/$BINARY_NAME"
-        echo -e "${RED}✖ Download failed${NC}"
+        echo -e "${RED}âœ– Download failed${NC}"
         exit 1
     fi
 }
 
-# ───────────── SSL Certificate ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SSL Certificate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 generate_ssl_cert() {
     echo ""
@@ -130,10 +130,10 @@ generate_ssl_cert() {
 
     CERT_FILE="$CONFIG_DIR/certs/cert.pem"
     KEY_FILE="$CONFIG_DIR/certs/key.pem"
-    echo -e "${GREEN}✓ SSL certificate generated${NC}"
+    echo -e "${GREEN}âœ“ SSL certificate generated${NC}"
 }
 
-# ───────────── Systemd Service ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Systemd Service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 create_systemd_service() {
     local MODE=$1
@@ -160,13 +160,13 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
-    echo -e "${GREEN}✓ Service ${SERVICE_NAME} created${NC}"
+    echo -e "${GREEN}âœ“ Service ${SERVICE_NAME} created${NC}"
 }
 
-# ───────────── System Optimizer ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ System Optimizer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 optimize_system() {
-    echo -e "${YELLOW}⚙️  Optimizing system...${NC}"
+    echo -e "${YELLOW}âš™ï¸  Optimizing system...${NC}"
 
     cat > /etc/sysctl.d/99-picotun.conf << 'EOF'
 net.core.rmem_max=16777216
@@ -194,24 +194,24 @@ net.ipv4.tcp_max_tw_buckets=1440000
 EOF
 
     sysctl -p /etc/sysctl.d/99-picotun.conf > /dev/null 2>&1
-    echo -e "${GREEN}✓ System optimized (BBR + buffer tuning)${NC}"
+    echo -e "${GREEN}âœ“ System optimized (BBR + buffer tuning)${NC}"
 }
 
-# ───────────── Port Mapping Parser ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Port Mapping Parser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 parse_port_mappings() {
     MAPPINGS=""
     COUNT=0
 
     echo ""
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}         PORT MAPPINGS${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo -e "${YELLOW}Format:${NC}"
-    echo -e "  ${GREEN}Single${NC}:    8443              → 8443→8443"
-    echo -e "  ${GREEN}Range${NC}:     1000/2000         → 1000→1000 ... 2000→2000"
-    echo -e "  ${GREEN}Custom${NC}:    5000=8443         → 5000→8443"
+    echo -e "  ${GREEN}Single${NC}:    8443              â†’ 8443â†’8443"
+    echo -e "  ${GREEN}Range${NC}:     1000/2000         â†’ 1000â†’1000 ... 2000â†’2000"
+    echo -e "  ${GREEN}Custom${NC}:    5000=8443         â†’ 5000â†’8443"
     echo -e "  ${GREEN}Range Map${NC}: 1000/1010=2000/2010"
     echo ""
 
@@ -220,7 +220,7 @@ parse_port_mappings() {
 
     while true; do
         echo ""
-        echo -e "${YELLOW}━━━ Port Mapping #$((COUNT+1)) ━━━${NC}"
+        echo -e "${YELLOW}â”â”â” Port Mapping #$((COUNT+1)) â”â”â”${NC}"
 
         echo -e "${CYAN}Protocol:${NC}  1) tcp  2) udp  3) both"
         read -p "Choice [1-3]: " proto_choice
@@ -231,7 +231,7 @@ parse_port_mappings() {
         echo -e "${YELLOW}Examples: 8443 | 1000/2000 | 5000=8443${NC}"
         read -p "Port(s): " PORT_INPUT
 
-        [ -z "$PORT_INPUT" ] && { echo -e "${RED}⚠ Empty!${NC}"; continue; }
+        [ -z "$PORT_INPUT" ] && { echo -e "${RED}âš  Empty!${NC}"; continue; }
         PORT_INPUT=$(echo "$PORT_INPUT" | tr -d ' ')
 
         # Range Map: 1000/1010=2000/2010
@@ -242,7 +242,7 @@ parse_port_mappings() {
             for ((i=0; i<BR; i++)); do
                 add_mapping "$PROTO" "${BIND_IP}:$((BS+i))" "${TARGET_IP}:$((TS+i))"
             done
-            echo -e "${GREEN}✓ Added $BR mappings ($PROTO)${NC}"
+            echo -e "${GREEN}âœ“ Added $BR mappings ($PROTO)${NC}"
 
         # Range: 1000/2000
         elif [[ "$PORT_INPUT" =~ ^([0-9]+)/([0-9]+)$ ]]; then
@@ -250,20 +250,20 @@ parse_port_mappings() {
             for ((p=SP; p<=EP; p++)); do
                 add_mapping "$PROTO" "${BIND_IP}:${p}" "${TARGET_IP}:${p}"
             done
-            echo -e "${GREEN}✓ Added $((EP-SP+1)) mappings ($PROTO)${NC}"
+            echo -e "${GREEN}âœ“ Added $((EP-SP+1)) mappings ($PROTO)${NC}"
 
         # Custom: 5000=8443
         elif [[ "$PORT_INPUT" =~ ^([0-9]+)=([0-9]+)$ ]]; then
             add_mapping "$PROTO" "${BIND_IP}:${BASH_REMATCH[1]}" "${TARGET_IP}:${BASH_REMATCH[2]}"
-            echo -e "${GREEN}✓ ${BASH_REMATCH[1]} → ${BASH_REMATCH[2]} ($PROTO)${NC}"
+            echo -e "${GREEN}âœ“ ${BASH_REMATCH[1]} â†’ ${BASH_REMATCH[2]} ($PROTO)${NC}"
 
         # Single: 8443
         elif [[ "$PORT_INPUT" =~ ^[0-9]+$ ]]; then
             add_mapping "$PROTO" "${BIND_IP}:${PORT_INPUT}" "${TARGET_IP}:${PORT_INPUT}"
-            echo -e "${GREEN}✓ ${PORT_INPUT} → ${PORT_INPUT} ($PROTO)${NC}"
+            echo -e "${GREEN}âœ“ ${PORT_INPUT} â†’ ${PORT_INPUT} ($PROTO)${NC}"
 
         else
-            echo -e "${RED}⚠ Invalid format!${NC}"; continue
+            echo -e "${RED}âš  Invalid format!${NC}"; continue
         fi
 
         read -p "Add another? [y/N]: " more
@@ -271,7 +271,7 @@ parse_port_mappings() {
     done
 
     [ "$COUNT" -eq 0 ] && {
-        echo -e "${YELLOW}⚠ No ports! Adding 8080→8080 default${NC}"
+        echo -e "${YELLOW}âš  No ports! Adding 8080â†’8080 default${NC}"
         add_mapping "tcp" "0.0.0.0:8080" "127.0.0.1:8080"
     }
 }
@@ -288,10 +288,10 @@ add_mapping() {
     fi
 }
 
-# ───────────── System Optimization ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ System Optimization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 optimize_system() {
-    echo -e "${CYAN}🚀 Optimizing System Network Stack...${NC}"
+    echo -e "${CYAN}ðŸš€ Optimizing System Network Stack...${NC}"
     IFACE=$(ip link show | grep "state UP" | head -1 | awk '{print $2}' | cut -d: -f1)
     [[ -z "$IFACE" ]] && IFACE="eth0"
     echo -e "  Interface: ${PURPLE}$IFACE${NC}"
@@ -348,16 +348,16 @@ EOF
 
     # Apply changes
     sysctl -p /etc/sysctl.d/99-rstunnel-opt.conf > /dev/null 2>&1
-    echo -e "${GREEN}✓ System optimized for high throughput${NC}"
+    echo -e "${GREEN}âœ“ System optimized for high throughput${NC}"
 }
 
-# ───────────── Install Server (Automatic) ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Install Server (Automatic) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 install_server_auto() {
     echo ""
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}   AUTOMATIC SERVER CONFIGURATION${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
 
     read -p "Tunnel Port [2020]: " LISTEN_PORT
@@ -371,7 +371,7 @@ install_server_auto() {
 
     echo ""
     echo -e "${YELLOW}Transport:${NC}"
-    echo "  1) httpsmux  - HTTPS Mimicry ⭐ Recommended"
+    echo "  1) httpsmux  - HTTPS Mimicry â­ Recommended"
     echo "  2) httpmux   - HTTP Mimicry"
     echo "  3) tcpmux    - Simple TCP"
     read -p "Choice [1-3]: " tc
@@ -484,9 +484,9 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}═══════════════════════════════════════${NC}"
-    echo -e "${GREEN}   ✓ Server installed & running!${NC}"
-    echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${GREEN}   âœ“ Server installed & running!${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo -e "  Port:      ${GREEN}${LISTEN_PORT}${NC}"
     echo -e "  PSK:       ${GREEN}${PSK}${NC}"
@@ -498,13 +498,13 @@ EOF
     main_menu
 }
 
-# ───────────── Install Client (Automatic) ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Install Client (Automatic) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 install_client_auto() {
     echo ""
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}   AUTOMATIC CLIENT CONFIGURATION${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
 
     while true; do
@@ -515,7 +515,7 @@ install_client_auto() {
 
     echo ""
     echo -e "${YELLOW}Transport (must match server):${NC}"
-    echo "  1) httpsmux  - HTTPS Mimicry ⭐"
+    echo "  1) httpsmux  - HTTPS Mimicry â­"
     echo "  2) httpmux   - HTTP Mimicry"
     echo "  3) tcpmux    - Simple TCP"
     read -p "Choice [1-3]: " tc
@@ -616,9 +616,9 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}═══════════════════════════════════════${NC}"
-    echo -e "${GREEN}   ✓ Client installed & running!${NC}"
-    echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${GREEN}   âœ“ Client installed & running!${NC}"
+    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo -e "  Server:    ${GREEN}${SERVER_ADDR}${NC}"
     echo -e "  PSK:       ${GREEN}${PSK}${NC}"
@@ -630,13 +630,13 @@ EOF
     main_menu
 }
 
-# ───────────── Install Server (Manual) ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Install Server (Manual) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 install_server_manual() {
     echo ""
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}   MANUAL SERVER CONFIGURATION${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
 
     echo -e "${YELLOW}Transport:${NC}"
@@ -644,7 +644,7 @@ install_server_manual() {
     echo "  2) wsmux     - WebSocket"
     echo "  3) wssmux    - WebSocket Secure (TLS)"
     echo "  4) httpmux   - HTTP Mimicry (DPI bypass)"
-    echo "  5) httpsmux  - HTTPS Mimicry ⭐"
+    echo "  5) httpsmux  - HTTPS Mimicry â­"
     read -p "Choice [1-5]: " tc
     case $tc in
         1) TRANSPORT="tcpmux" ;; 2) TRANSPORT="wsmux" ;; 3) TRANSPORT="wssmux" ;;
@@ -770,19 +770,19 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}✓ Server installed! Port=${LISTEN_PORT} Transport=${TRANSPORT}${NC}"
+    echo -e "${GREEN}âœ“ Server installed! Port=${LISTEN_PORT} Transport=${TRANSPORT}${NC}"
     echo -e "  Logs: journalctl -u picotun-server -f"
     read -p "Press Enter..."
     main_menu
 }
 
-# ───────────── Install Server (Entry) ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Install Server (Entry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 install_server() {
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}        SERVER INSTALLATION${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "  1) Automatic - Optimized (Recommended)"
     echo "  2) Manual - Custom settings"
@@ -791,18 +791,18 @@ install_server() {
     [ "$cm" == "2" ] && install_server_manual || install_server_auto
 }
 
-# ───────────── Install Client (Entry) ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Install Client (Entry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 install_client() {
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}        CLIENT INSTALLATION${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     install_client_auto
 }
 
-# ───────────── Dashboard Config ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Dashboard Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 install_dashboard_assets() {
@@ -1200,9 +1200,9 @@ EOF
 
 dashboard_menu() {
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}     DASHBOARD MANAGEMENT${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
 
     # Detect installed modes
@@ -1279,12 +1279,12 @@ dashboard:
   pass: "${DASH_PASS}"
   session_secret: "${SESSION_SECRET}"
 EOF
-        echo -e "${GREEN}✓ Dashboard configured.${NC}"
+        echo -e "${GREEN}âœ“ Dashboard configured.${NC}"
         
         read -p "Restart service now? [Y/n]: " r
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
             systemctl restart "$SVC"
-            echo -e "${GREEN}✓ Service restarted.${NC}"
+            echo -e "${GREEN}âœ“ Service restarted.${NC}"
             echo -e "Access at: http://YOUR_IP:8080"
         fi
         
@@ -1292,12 +1292,12 @@ EOF
         # Uninstall
         rm -rf /var/lib/picotun/dashboard
         sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
-        echo -e "${GREEN}✓ Dashboard uninstalled (files removed).${NC}"
+        echo -e "${GREEN}âœ“ Dashboard uninstalled (files removed).${NC}"
         
         read -p "Restart service now? [Y/n]: " r
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
             systemctl restart "$SVC"
-            echo -e "${GREEN}✓ Service restarted.${NC}"
+            echo -e "${GREEN}âœ“ Service restarted.${NC}"
         fi
         
     elif [ "$c" == "0" ]; then
@@ -1310,7 +1310,7 @@ EOF
     dashboard_menu
 }
 
-# ───────────── Service Management ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Service Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 service_management() {
     local MODE=$1
@@ -1318,15 +1318,15 @@ service_management() {
     local CFG="$CONFIG_DIR/${MODE}.yaml"
 
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}      ${MODE^^} MANAGEMENT${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
 
     # Status
     if systemctl is-active "$SVC" &>/dev/null; then
-        echo -e "  Status: ${GREEN}● Running${NC}"
+        echo -e "  Status: ${GREEN}â— Running${NC}"
     else
-        echo -e "  Status: ${RED}● Stopped${NC}"
+        echo -e "  Status: ${RED}â— Stopped${NC}"
     fi
     echo ""
 
@@ -1342,13 +1342,13 @@ service_management() {
     read -p "Choice: " c
 
     case $c in
-        1) systemctl start "$SVC"; echo -e "${GREEN}✓ Started${NC}"; sleep 1; service_management "$MODE" ;;
-        2) systemctl stop "$SVC"; echo -e "${GREEN}✓ Stopped${NC}"; sleep 1; service_management "$MODE" ;;
-        3) systemctl restart "$SVC"; echo -e "${GREEN}✓ Restarted${NC}"; sleep 1; service_management "$MODE" ;;
+        1) systemctl start "$SVC"; echo -e "${GREEN}âœ“ Started${NC}"; sleep 1; service_management "$MODE" ;;
+        2) systemctl stop "$SVC"; echo -e "${GREEN}âœ“ Stopped${NC}"; sleep 1; service_management "$MODE" ;;
+        3) systemctl restart "$SVC"; echo -e "${GREEN}âœ“ Restarted${NC}"; sleep 1; service_management "$MODE" ;;
         4) systemctl status "$SVC" --no-pager; read -p "Enter..."; service_management "$MODE" ;;
         5) journalctl -u "$SVC" -f ;;
-        6) systemctl enable "$SVC" 2>/dev/null; echo -e "${GREEN}✓ Auto-start enabled${NC}"; sleep 1; service_management "$MODE" ;;
-        7) systemctl disable "$SVC" 2>/dev/null; echo -e "${GREEN}✓ Auto-start disabled${NC}"; sleep 1; service_management "$MODE" ;;
+        6) systemctl enable "$SVC" 2>/dev/null; echo -e "${GREEN}âœ“ Auto-start enabled${NC}"; sleep 1; service_management "$MODE" ;;
+        7) systemctl disable "$SVC" 2>/dev/null; echo -e "${GREEN}âœ“ Auto-start disabled${NC}"; sleep 1; service_management "$MODE" ;;
         8) [ -f "$CFG" ] && cat "$CFG" || echo -e "${RED}Config not found${NC}"; read -p "Enter..."; service_management "$MODE" ;;
         9)
             if [ -f "$CFG" ]; then
@@ -1366,7 +1366,7 @@ service_management() {
                 systemctl disable "$SVC" 2>/dev/null
                 rm -f "$CFG" "$SYSTEMD_DIR/${SVC}.service"
                 systemctl daemon-reload
-                echo -e "${GREEN}✓ Deleted${NC}"; sleep 1
+                echo -e "${GREEN}âœ“ Deleted${NC}"; sleep 1
             fi
             settings_menu ;;
         0) settings_menu ;;
@@ -1374,13 +1374,13 @@ service_management() {
     esac
 }
 
-# ───────────── Settings Menu ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Settings Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 settings_menu() {
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}           SETTINGS${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "  1) Manage Server"
     echo "  2) Manage Client"
@@ -1396,13 +1396,13 @@ settings_menu() {
     esac
 }
 
-# ───────────── Update ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 update_binary() {
     show_banner
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}         UPDATE PICOTUN${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
 
     CUR=$(get_current_version)
@@ -1417,14 +1417,14 @@ update_binary() {
         echo -e "${YELLOW}Updating dashboard assets...${NC}"
         rm -rf "/var/lib/picotun/dashboard"
         install_dashboard_assets
-        echo -e "${GREEN}✓ Dashboard updated${NC}"
+        echo -e "${GREEN}âœ“ Dashboard updated${NC}"
     fi
 
     # Restart services if running
     for svc in picotun-server picotun-client; do
         if systemctl is-active "$svc" &>/dev/null; then
             systemctl restart "$svc"
-            echo -e "${GREEN}✓ $svc restarted${NC}"
+            echo -e "${GREEN}âœ“ $svc restarted${NC}"
         fi
     done
 
@@ -1433,13 +1433,13 @@ update_binary() {
     main_menu
 }
 
-# ───────────── Uninstall ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Uninstall â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 uninstall() {
     show_banner
-    echo -e "${RED}═══════════════════════════════════════${NC}"
+    echo -e "${RED}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${RED}         UNINSTALL PICOTUN${NC}"
-    echo -e "${RED}═══════════════════════════════════════${NC}"
+    echo -e "${RED}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo -e "${YELLOW}This will remove:${NC}"
     echo "  - PicoTun binary"
@@ -1463,11 +1463,11 @@ uninstall() {
     sysctl -p > /dev/null 2>&1
     systemctl daemon-reload
 
-    echo -e "${GREEN}✓ PicoTun uninstalled${NC}"
+    echo -e "${GREEN}âœ“ PicoTun uninstalled${NC}"
     exit 0
 }
 
-# ───────────── Main Menu ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Main Menu â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 main_menu() {
     show_banner
@@ -1475,9 +1475,9 @@ main_menu() {
     CUR=$(get_current_version)
     [ "$CUR" != "not-installed" ] && echo -e "  ${CYAN}Version: ${GREEN}${CUR}${NC}\n"
 
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo -e "${CYAN}           MAIN MENU${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════${NC}"
+    echo -e "${CYAN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
     echo ""
     echo "  1) Install Server (Iran)"
     echo "  2) Install Client (Kharej)"
@@ -1504,7 +1504,7 @@ main_menu() {
     esac
 }
 
-# ───────────── Entry Point ─────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Entry Point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 check_root
 show_banner
