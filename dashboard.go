@@ -268,8 +268,28 @@ func handleRestartAPI(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDashboardPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(dashboardHTML))
+	dashboardDir := "/var/lib/picotun/dashboard"
+	indexFile := dashboardDir + "/index.html"
+
+	if _, err := os.Stat(indexFile); os.IsNotExist(err) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(`
+<!DOCTYPE html>
+<html>
+<head><title>TunnelR</title><style>body{background:#0f172a;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh}a{color:#3b82f6}</style></head>
+<body>
+  <div style="text-align:center">
+    <h1>Dashboard Not Installed</h1>
+    <p>Please run <code>setup.sh</code> and select <b>Dashboard Panel</b> to install the interface.</p>
+  </div>
+</body>
+</html>`))
+		return
+	}
+
+	// Serve static files
+	fs := http.FileServer(http.Dir(dashboardDir))
+	fs.ServeHTTP(w, r)
 }
 
 func humanBytes(b int64) string {
@@ -314,238 +334,3 @@ button:hover{background:#2563eb}
 </div>
 </body></html>`, errDiv)
 }
-
-const dashboardHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TunnelR Pro</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-:root{--bg:#0a0e1a;--sidebar:#111827;--card:#1f2937;--accent:#3b82f6;--text:#f3f4f6;--muted:#9ca3af;--border:#374151}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;display:flex;height:100vh;overflow:hidden}
-.sidebar{width:240px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px;flex-shrink:0}
-.brand{font-size:18px;font-weight:700;margin-bottom:30px;color:var(--accent);display:flex;align-items:center;gap:10px}
-.menu{flex:1}
-.menu-item{padding:12px;border-radius:8px;color:var(--muted);cursor:pointer;transition:0.2s;margin-bottom:4px;font-weight:500}
-.menu-item:hover,.menu-item.active{background:rgba(59,130,246,0.1);color:var(--accent)}
-.main{flex:1;overflow-y:auto;padding:30px;position:relative}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
-.status{background:rgba(16,185,129,0.15);color:#10b981;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px}
-.card{background:var(--card);padding:24px;border-radius:12px;border:1px solid var(--border)}
-.card h3{font-size:14px;color:var(--muted);margin-bottom:8px;font-weight:500}
-.card .value{font-size:28px;font-weight:700}
-.chart-container{height:300px;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:30px}
-.panel{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden}
-.panel-head{padding:15px 20px;border-bottom:1px solid var(--border);font-weight:600}
-textarea{width:100%;height:500px;background:#111827;color:#d1d5db;border:none;padding:15px;font-family:monospace;resize:none;outline:none}
-#logs-out{height:500px;background:#000;color:#22c55e;font-family:monospace;padding:15px;overflow-y:scroll;font-size:12px;white-space:pre-wrap}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-weight:600}
-.btn:hover{filter:brightness(110%)}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:12px;color:var(--muted);font-size:12px;text-transform:uppercase;border-bottom:1px solid var(--border)}
-td{padding:12px;border-bottom:1px solid var(--border)}
-tr:last-child td{border-bottom:none}
-</style>
-</head>
-<body>
-
-<div class="sidebar">
-  <div class="brand">🚀 TunneIR Pro</div>
-  <div class="menu">
-    <div class="menu-item active" onclick="show('dash')">Dashboard</div>
-    <div class="menu-item" onclick="show('logs')">System Logs</div>
-    <div class="menu-item" onclick="show('settings')">Settings</div>
-  </div>
-   <div style="font-size:12px;color:var(--muted);margin-top:auto">v3.0.0</div>
-</div>
-
-<div class="main">
-  <!-- DASHBOARD -->
-  <div id="view-dash">
-    <div class="header">
-      <h2>Overview</h2>
-      <span class="status">System Healthy</span>
-    </div>
-    
-    <div class="grid">
-      <div class="card">
-        <h3>Memory (Heap)</h3>
-        <div class="value" id="ram">...</div>
-      </div>
-      <div class="card">
-        <h3>Connections</h3>
-        <div class="value" id="conns">...</div>
-      </div>
-      <div class="card">
-        <h3>Uptime</h3>
-        <div class="value" id="uptime">...</div>
-      </div>
-    </div>
-
-    <div class="chart-container">
-      <canvas id="chart"></canvas>
-    </div>
-
-    <div class="panel">
-      <div class="panel-head">Active Sessions</div>
-      <div style="padding:0">
-         <table id="sessions-table"></table>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOGS -->
-  <div id="view-logs" style="display:none">
-    <div class="header"><h2>Live System Logs (journalctl)</h2></div>
-    <div class="panel">
-      <div id="logs-out">Connecting to log stream...</div>
-    </div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div id="view-settings" style="display:none">
-    <div class="header">
-      <h2>Configuration</h2>
-      <button class="btn" onclick="saveConfig()">Save & Restart Service</button>
-    </div>
-    <div class="panel">
-      <textarea id="config-editor" spellcheck="false"></textarea>
-    </div>
-  </div>
-</div>
-
-<script>
-const $ = s => document.querySelector(s);
-let chart = null;
-
-function show(id) {
-  document.querySelectorAll('.main > div').forEach(d => d.style.display = 'none');
-  $('#view-'+id).style.display = 'block';
-  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
-  event.target.classList.add('active');
-  
-  if(id === 'logs') startLogs();
-  if(id === 'settings') loadConfig();
-}
-
-// Chart.js init
-const ctx = document.getElementById('chart').getContext('2d');
-chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: Array(60).fill(''),
-        datasets: [{
-            label: 'Sent (KB)',
-            borderColor: '#8b5cf6',
-            data: Array(60).fill(0),
-            tension: 0.4,
-            fill: false
-        }, {
-            label: 'Recv (KB)',
-            borderColor: '#3b82f6',
-            data: Array(60).fill(0),
-            tension: 0.4,
-            fill: false
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-             x: {display: false},
-             y: {grid: {color: '#374151'}, ticks: {color: '#9ca3af'}}
-        },
-        plugins: {legend: {labels: {color: '#f3f4f6'}}}
-    }
-});
-
-function updateChart(sent, recv) {
-    const s = sent/1024;
-    const r = recv/1024;
-    
-    chart.data.datasets[0].data.shift();
-    chart.data.datasets[0].data.push(s);
-    
-    chart.data.datasets[1].data.shift();
-    chart.data.datasets[1].data.push(r);
-    
-    chart.update('none');
-}
-
-// Stats Loop
-setInterval(async () => {
-    try {
-        const res = await fetch('/api/stats');
-        if(res.status === 401) location.reload();
-        const d = await res.json();
-        
-        $('#ram').innerText = d.ram;
-        $('#conns').innerText = d.stats.active_conns;
-        $('#uptime').innerText = d.uptime;
-        
-        // Traffic delta would be better, but for now absolute is okay if we track last
-        // Actually, let's just show absolute throughput if server provided it? 
-        // Server gives total bytes. We need delta.
-        const nowS = d.stats.bytes_sent;
-        const nowR = d.stats.bytes_recv;
-        const diffS = nowS - (window.lastS || nowS);
-        const diffR = nowR - (window.lastR || nowR);
-        window.lastS = nowS;
-        window.lastR = nowR;
-        
-        if(window.lastS) updateChart(diffS, diffR);
-        
-        // Table
-        let h = '<thead><tr><th>ID</th><th>Age</th><th>Streams</th><th>Status</th></tr></thead><tbody>';
-        if(d.client && d.client.sessions) {
-            d.client.sessions.forEach(s => {
-               h += '<tr><td>#'+s.id+'</td><td>'+s.age+'</td><td>'+s.streams+'</td><td><span style="color:#10b981">● Active</span></td></tr>';
-            });
-        }
-        h += '</tbody>';
-        $('#sessions-table').innerHTML = h;
-
-    } catch(e) {}
-}, 1000);
-
-// Logs
-let logEvt = null;
-function startLogs() {
-    if(logEvt) return;
-    const out = $('#logs-out');
-    out.innerText = '';
-    logEvt = new EventSource('/api/logs/stream');
-    logEvt.onmessage = e => {
-       out.innerText += e.data + '\n';
-       out.scrollTop = out.scrollHeight;
-    };
-    logEvt.onerror = () => {
-       logEvt.close();
-       logEvt = null;
-       out.innerText += '\n[Stream disconnected]\n';
-    };
-}
-
-// Config
-async function loadConfig() {
-   const res = await fetch('/api/config');
-   const txt = await res.text();
-   $('#config-editor').value = txt;
-}
-
-async function saveConfig() {
-   if(!confirm('This will restart the service. Continue?')) return;
-   const txt = $('#config-editor').value;
-   await fetch('/api/config', {method:'POST', body: txt});
-   await fetch('/api/restart', {method:'POST'});
-   alert('Service restarting... refreshing in 5s');
-   setTimeout(() => location.reload(), 5000);
-}
-</script>
-</body>
-</html>`

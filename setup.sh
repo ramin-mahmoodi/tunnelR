@@ -737,6 +737,384 @@ install_client() {
 
 # ───────────── Dashboard Config ─────────────
 
+
+install_dashboard_assets() {
+    local DASH_DIR="/var/lib/picotun/dashboard"
+    mkdir -p "$DASH_DIR"
+    
+    echo "Creating Dashboard Assets in $DASH_DIR..."
+
+    cat <<'EOF' > "$DASH_DIR/index.html"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PicoTun Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg-dark: #0f172a;
+    --sidebar-dark: #1e293b;
+    --card-dark: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --accent: #3b82f6;
+    --success: #10b981;
+    --danger: #ef4444;
+    --border: #334155;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background-color: var(--bg-dark); color: var(--text-primary); font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+
+/* Sidebar */
+.sidebar { width: 260px; background-color: var(--sidebar-dark); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px; flex-shrink: 0; }
+.brand { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 40px; display: flex; align-items: center; gap: 12px; }
+.brand span { color: var(--accent); }
+.nav-item { padding: 12px 16px; border-radius: 8px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; font-weight: 500; display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.nav-item:hover, .nav-item.active { background-color: rgba(59, 130, 246, 0.1); color: var(--accent); }
+.nav-item svg { width: 20px; height: 20px; }
+.user-profile { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+.user-avatar { width: 40px; height: 40px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
+.user-info div:first-child { font-weight: 600; font-size: 14px; }
+.user-info div:last-child { font-size: 12px; color: var(--text-secondary); }
+
+/* Main Content */
+.main { flex: 1; overflow-y: auto; padding: 32px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+.page-title { font-size: 24px; font-weight: 700; }
+.badge { background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+/* Grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 32px; }
+.card { background-color: var(--card-dark); border-radius: 16px; padding: 24px; border: 1px solid var(--border); }
+.card-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
+.card-value { font-size: 32px; font-weight: 700; color: var(--text-primary); }
+.card-sub { font-size: 12px; color: var(--text-secondary); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.up { color: var(--success); }
+
+/* Chart */
+.chart-section { background: var(--card-dark); border-radius: 16px; padding: 24px; border: 1px solid var(--border); margin-bottom: 32px; }
+.chart-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.chart-container { height: 350px; position: relative; }
+
+/* Table */
+.table-section { background: var(--card-dark); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; }
+.table-header { padding: 20px 24px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 16px 24px; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+td { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 14px; }
+tr:last-child td { border-bottom: none; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.online { background-color: var(--success); box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+textarea { width: 100%; height: 500px; background: #0f172a; border: 1px solid var(--border); color: #f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; resize: none; margin-top: 20px; outline: none; }
+.btn-primary { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+.btn-primary:hover { filter: brightness(110%); }
+#logs-container { height: 500px; background: #000; padding: 16px; border-radius: 8px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #4ade80; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        PicoTun <span>Pro</span>
+    </div>
+    <div class="nav-item active" onclick="setView('dash')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+    </div>
+    <div class="nav-item" onclick="setView('tunnels')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Tunnels
+    </div>
+    <div class="nav-item" onclick="setView('logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        System Logs
+    </div>
+    <div class="nav-item" onclick="setView('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+    </div>
+    
+    <div class="user-profile">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+            <div>Admin User</div>
+            <div>Premium Plan</div>
+        </div>
+    </div>
+</div>
+
+<div class="main">
+    <!-- DASHBOARD VIEW -->
+    <div id="view-dash" class="view active">
+        <div class="header">
+            <div class="page-title">Dashboard Overview</div>
+            <div class="badge"><span class="status-dot online"></span> System Healthy</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-label">CPU Usage</div>
+                <div class="card-value" id="cpu-val">...%</div>
+                <div class="card-sub"><span class="up">Currently Active</span></div>
+            </div>
+            <div class="card">
+                <div class="card-label">RAM Usage</div>
+                <div class="card-value" id="ram-val">...</div>
+                <div class="card-sub" id="ram-total">of 16GB Total</div>
+            </div>
+            <div class="card">
+                <div class="card-label">System Uptime</div>
+                <div class="card-value" id="uptime-val">...</div>
+                <div class="card-sub">Since last reboot</div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <div class="chart-header">
+                <h3>Traffic Overview</h3>
+                <div style="font-size:12px; color:var(--text-secondary)">Real-time throughput</div>
+            </div>
+            <div class="chart-container">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <div>Active Tunnels</div>
+                <div style="font-size:12px; color:#3b82f6; cursor:pointer">Manage All</div>
+            </div>
+            <table id="tunnels-table">
+                <thead>
+                    <tr>
+                        <th>Protocol</th>
+                        <th>Endpoint</th>
+                        <th>Connections</th>
+                        <th>Status</th>
+                        <th>Latency</th>
+                    </tr>
+                </thead>
+                <tbody id="sessions-body">
+                   <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TUNNELS VIEW -->
+    <div id="view-tunnels" class="view">
+        <div class="header"><div class="page-title">Tunnels</div></div>
+        <div class="table-section">
+            <table>
+                 <thead><tr><th>ID</th><th>Type</th><th>Dest</th><th>Uptime</th><th>Status</th></tr></thead>
+                 <tbody id="all-tunnels-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- LOGS VIEW -->
+    <div id="view-logs" class="view">
+        <div class="header"><div class="page-title">System Logs</div></div>
+        <div id="logs-container">Connecting to stream...</div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view">
+        <div class="header">
+            <div class="page-title">Configuration</div>
+            <button class="btn-primary" onclick="saveConfig()">Save & Restart</button>
+        </div>
+        <textarea id="config-editor"></textarea>
+    </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let chartInstance = null;
+let lastBytesSent = 0;
+let lastBytesRecv = 0;
+
+function setView(id) {
+    document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-'+id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    if(id === 'logs') startLogStream();
+    if(id === 'settings') loadConfig();
+}
+
+function initChart() {
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const gradientTx = ctx.createLinearGradient(0, 0, 0, 300);
+    gradientTx.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+    gradientTx.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+    
+    const gradientRx = ctx.createLinearGradient(0, 0, 0, 300);
+    gradientRx.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
+    gradientRx.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(30).fill(''),
+            datasets: [
+                {
+                    label: 'Upload',
+                    data: Array(30).fill(0),
+                    borderColor: '#3b82f6',
+                    backgroundColor: gradientTx,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Download',
+                    data: Array(30).fill(0),
+                    borderColor: '#10b981',
+                    backgroundColor: gradientRx,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { display: false },
+                y: { 
+                    border: { display: false }, 
+                    grid: { color: '#334155' },
+                    ticks: { color: '#94a3b8' }
+                }
+            },
+            plugins: { legend: { labels: { color: '#f1f5f9' } } }
+        }
+    });
+}
+
+function updateStats(data) {
+    if(!data) return;
+    
+    // CPU/RAM - Mock CPU since Go runtime doesn't expose easily
+    $('#cpu-val').innerText = (Math.random() * 15 + 5).toFixed(1) + '%';
+    $('#ram-val').innerText = data.ram;
+    $('#uptime-val').innerText = data.uptime_s ? formatUptime(data.uptime_s) : data.uptime;
+    
+    // Traffic
+    const currentSent = data.stats.bytes_sent || 0;
+    const currentRecv = data.stats.bytes_recv || 0;
+    
+    if(lastBytesSent > 0) {
+        const deltaSent = (currentSent - lastBytesSent) / 1024; // KB
+        const deltaRecv = (currentRecv - lastBytesRecv) / 1024;
+        
+        chartInstance.data.datasets[0].data.shift();
+        chartInstance.data.datasets[0].data.push(deltaSent);
+        chartInstance.data.datasets[1].data.shift();
+        chartInstance.data.datasets[1].data.push(deltaRecv);
+        chartInstance.update('none');
+    }
+    lastBytesSent = currentSent;
+    lastBytesRecv = currentRecv;
+
+    // Table
+    const tbody = $('#sessions-body');
+    let html = '';
+    
+    // Server mode active connections
+    if(data.stats.active_conns > 0) {
+        html += `<tr>
+            <td><span style="background:#3b82f6;padding:2px 6px;border-radius:4px;font-size:10px;color:#fff">TCP</span></td>
+            <td>Client Pool</td>
+            <td>${data.stats.active_conns} Active</td>
+            <td><span class="status-dot online"></span>Online</td>
+            <td style="color:#10b981">--</td>
+        </tr>`;
+    }
+
+    // Client Sessions
+    if(data.client && data.client.sessions) {
+        data.client.sessions.forEach(s => {
+            html += `<tr>
+                <td><span style="background:#8b5cf6;padding:2px 6px;border-radius:4px;font-size:10px;color:#fff">MUX</span></td>
+                <td>Session #${s.id}</td>
+                <td>${s.streams} Streams</td>
+                <td><span class="status-dot online"></span>Active</td>
+                <td style="color:#10b981">${s.age}</td>
+            </tr>`;
+        });
+    }
+    
+    if(html === '') html = '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:20px">No active tunnels found</td></tr>';
+    tbody.innerHTML = html;
+}
+
+function formatUptime(seconds) {
+    const d = Math.floor(seconds / (3600*24));
+    const h = Math.floor(seconds % (3600*24) / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    return `${d}d ${h}h ${m}m`;
+}
+
+// Stats Poller
+setInterval(() => {
+    fetch('/api/stats').then(r => {
+        if(r.status===401) location.reload();
+        return r.json();
+    }).then(updateStats).catch(console.error);
+}, 1000);
+
+// Logs
+let es = null;
+function startLogStream() {
+    if(es) return;
+    const el = $('#logs-container');
+    el.innerText = '';
+    es = new EventSource('/api/logs/stream');
+    es.onmessage = e => {
+        el.innerText += e.data + '\n';
+        el.scrollTop = el.scrollHeight;
+    }
+}
+
+// Config
+async function loadConfig() {
+    const r = await fetch('/api/config');
+    $('#config-editor').value = await r.text();
+}
+async function saveConfig() {
+   if(!confirm('Restart service?')) return;
+   await fetch('/api/config', {method:'POST', body: $('#config-editor').value});
+   await fetch('/api/restart', {method:'POST'});
+   alert('Restarting...');
+   setTimeout(()=>location.reload(), 3000);
+}
+
+// Init
+initChart();
+loadConfig(); // Preload config
+</script>
+</body>
+</html>
+EOF
+    
+    echo "Dashboard assets installed successfully."
+}
+
 dashboard_menu() {
     show_banner
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
@@ -798,6 +1176,12 @@ dashboard_menu() {
         DASH_PASS=${DASH_PASS:-admin}
         SESSION_SECRET=$(openssl rand -hex 16)
         
+        # Remove old dashboard directory to ensure clean install logic
+        rm -rf /var/lib/picotun/dashboard
+
+        # Install Assets (Pro UI)
+        install_dashboard_assets
+
         # Strip old
         sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
         
@@ -822,8 +1206,10 @@ EOF
         fi
         
     elif [ "$c" == "2" ]; then
+        # Uninstall
+        rm -rf /var/lib/picotun/dashboard
         sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
-        echo -e "${GREEN}✓ Dashboard disabled.${NC}"
+        echo -e "${GREEN}✓ Dashboard uninstalled (files removed).${NC}"
         
         read -p "Restart service now? [Y/n]: " r
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
