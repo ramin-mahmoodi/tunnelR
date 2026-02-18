@@ -343,6 +343,7 @@ func (s *Server) cleanupSessions(ctx context.Context) {
 			for key, sess := range s.sessions {
 				if sess.IsClosed() {
 					delete(s.sessions, key)
+					atomic.AddInt64(&GlobalStats.ActiveSessions, -1)
 					if s.Verbose {
 						log.Printf("[CLEANUP] removed dead session %s", key)
 					}

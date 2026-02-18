@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.2)..."
+    echo "Creating Dashboard Assets (v3.5.3)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,7 +859,7 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.2</title>
+    <title>TunnelR v3.5.3</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
@@ -894,7 +894,7 @@ install_dashboard_assets() {
     <aside class="w-64 bg-nav border-r border-slate-700 flex flex-col hidden md:flex" style="background-color: var(--bg-nav);">
         <div class="p-6 flex items-center gap-3 border-b border-slate-700/50">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">T</div>
-            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.2</span></h1>
+            <h1 class="font-bold text-lg tracking-tight text-white">TunnelR <span class="text-xs font-normal text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded ml-1">v3.5.3</span></h1>
         </div>
 
         <nav class="flex-1 px-4 space-y-2 mt-6">
@@ -948,11 +948,11 @@ install_dashboard_assets() {
                         </div>
                     </div>
 
-                    <!-- RAM Card (UPDATED: Used / Total) -->
+                    <!-- RAM Card -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
                         <div class="flex justify-between items-start mb-4">
                             <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM Usage</div>
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">RAM (Used/Total)</div>
                                 <div class="text-3xl font-bold text-white tabular-nums flex items-baseline gap-1">
                                     <span id="ram-used">0</span>
                                     <span class="text-sm text-slate-500 font-normal">/ <span id="ram-total">0</span></span>
@@ -965,37 +965,42 @@ install_dashboard_assets() {
                         <div class="w-full bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
                             <div id="ram-bar" class="bg-emerald-500 h-full transition-all duration-500" style="width:0%"></div>
                         </div>
-                        <div class="mt-2 text-xs text-emerald-400 font-medium">+ System Memory</div>
                     </div>
 
-                    <!-- Uptime Card (UPDATED: Replaces Load Avg) -->
+                    <!-- Service Uptime Card -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">System Uptime</div>
-                                <div class="text-2xl font-bold text-white tabular-nums mt-1" id="sys-uptime">0d 00h 00m</div> <!-- Large text -->
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Service Uptime</div>
+                                <div class="text-2xl font-bold text-white tabular-nums mt-1" id="svc-uptime">00:00:00</div>
                             </div>
                             <div class="icon-box text-orange-400 bg-orange-500/10">
                                 <svg class="icon"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             </div>
                         </div>
-                        <div class="mt-4 text-xs text-slate-500">Since last reboot</div>
+                        <div class="mt-4 text-xs text-slate-500">Since run started</div>
                     </div>
 
-                    <!-- Network Card -->
+                    <!-- Sessions & Volume Card -->
                     <div class="card p-5 relative overflow-hidden group hover:border-slate-600 transition-colors">
                         <div class="flex justify-between items-start">
                             <div>
-                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Active Sessions</div>
+                                <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Sessions</div>
                                 <div class="text-3xl font-bold text-white tabular-nums mt-1" id="sess-count">0</div>
                             </div>
                             <div class="icon-box text-purple-400 bg-purple-500/10">
                                 <svg class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                         </div>
-                        <div class="mt-4 flex gap-3 text-xs font-mono">
-                            <span class="text-blue-400 flex items-center gap-1">↑ <span id="speed-up">0 B/s</span></span>
-                            <span class="text-emerald-400 flex items-center gap-1">↓ <span id="speed-down">0 B/s</span></span>
+                        <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono border-t border-slate-700/50 pt-2">
+                            <div>
+                                <span class="text-slate-500 block">Total Sent</span>
+                                <span id="vol-sent" class="text-blue-400">0 B</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block">Total Recv</span>
+                                <span id="vol-recv" class="text-emerald-400">0 B</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1005,7 +1010,10 @@ install_dashboard_assets() {
                     <div class="flex justify-between items-center mb-6">
                         <div>
                             <h3 class="text-lg font-bold text-white">Network Traffic</h3>
-                            <p class="text-slate-500 text-sm">Real-time throughput analysis</p>
+                            <div class="flex gap-4 mt-1 text-sm font-mono">
+                                <span class="text-blue-400">↑ <span id="speed-up">0 B/s</span></span>
+                                <span class="text-emerald-400">↓ <span id="speed-down">0 B/s</span></span>
+                            </div>
                         </div>
                     </div>
                     <div class="h-80 w-full">
@@ -1145,12 +1153,11 @@ install_dashboard_assets() {
                 $('#cpu-val').innerText = data.cpu.toFixed(1);
                 $('#cpu-bar').style.width = Math.min(data.cpu, 100) + '%';
                 
-                // RAM: Used / Total
-                // Backend sends bytes. Convert to GB.
+                // RAM
                 const usedBytes = data.ram_used || 0;
                 const totalBytes = data.ram_total || 1; 
                 const usedGB = (usedBytes / 1024 / 1024 / 1024).toFixed(1);
-                const totalGB = (totalBytes / 1024 / 1024 / 1024).toFixed(1); // Usually 0 in old backend, updated in new.
+                const totalGB = (totalBytes / 1024 / 1024 / 1024).toFixed(1);
                 
                 if (totalBytes > 1024*1024) {
                      $('#ram-used').innerText = usedGB;
@@ -1158,18 +1165,21 @@ install_dashboard_assets() {
                      const ramPct = (usedBytes / totalBytes) * 100;
                      $('#ram-bar').style.width = Math.min(ramPct, 100) + '%';
                 } else {
-                    // Fallback for old backend or error
                     $('#ram-used').innerText = humanBytes(data.ram_val);
                     $('#ram-total').innerText = 'System';
                 }
                 
                 $('#sess-count').innerText = data.stats.total_conns;
                 
-                // System Uptime
-                if (data.uptime_sys) {
-                     $('#sys-uptime').innerText = formatUptime(data.uptime_sys);
+                // Volume
+                $('#vol-sent').innerText = data.stats.sent_human;
+                $('#vol-recv').innerText = data.stats.recv_human;
+                
+                // Service Uptime (Reverted per request)
+                if (data.uptime_s) {
+                     $('#svc-uptime').innerText = formatUptime(data.uptime_s);
                 } else {
-                     $('#sys-uptime').innerText = data.uptime_s ? formatUptime(data.uptime_s) : "00m";
+                     $('#svc-uptime').innerText = "00:00:00";
                 }
 
                 // Traffic
@@ -1189,11 +1199,13 @@ install_dashboard_assets() {
             const hours = Math.floor(s / 3600);
             s %= 3600;
             const minutes = Math.floor(s / 60);
+            s = Math.floor(s % 60);
             
             let res = "";
             if(days > 0) res += `${days}d `;
-            res += `${String(hours).padStart(2, '0')}h `;
-            res += `${String(minutes).padStart(2, '0')}m`;
+            res += `${String(hours).padStart(2, '0')}:`;
+            res += `${String(minutes).padStart(2, '0')}:`;
+            res += `${String(s).padStart(2, '0')}`;
             return res;
         }
 
@@ -1347,6 +1359,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
