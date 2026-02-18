@@ -203,6 +203,9 @@ func (s *Server) upgrade(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleForwardStream(stream *smux.Stream) {
 	defer stream.Close()
 
+	// Set read deadline for header — prevents stuck streams
+	stream.SetReadDeadline(time.Now().Add(10 * time.Second))
+
 	// Read target header
 	hdr := make([]byte, 2)
 	if _, err := io.ReadFull(stream, hdr); err != nil {
@@ -216,6 +219,9 @@ func (s *Server) handleForwardStream(stream *smux.Stream) {
 	if _, err := io.ReadFull(stream, tBuf); err != nil {
 		return
 	}
+
+	// Clear deadline for data transfer
+	stream.SetReadDeadline(time.Time{})
 
 	network, addr := splitTarget(string(tBuf))
 	if s.Verbose {
@@ -262,10 +268,25 @@ func (s *Server) clearSession(key string, sess *smux.Session) {
 func (s *Server) openStream() (*smux.Stream, error) {
 	s.sessMu.RLock()
 	defer s.sessMu.RUnlock()
+	var lastErr error
 	for _, sess := range s.sessions {
-		if !sess.IsClosed() {
-			return sess.OpenStream()
+		if sess.IsClosed() {
+			continue
 		}
+		// Load balancing: skip overloaded sessions
+		if sess.NumStreams() > 200 {
+			continue
+		}
+		stream, err := sess.OpenStream()
+		if err == nil {
+			return stream, nil
+		}
+		lastErr = err
+		// OpenStream failed but IsClosed() was false → zombie
+		sess.Close()
+	}
+	if lastErr != nil {
+		return nil, fmt.Errorf("all sessions failed: %v", lastErr)
 	}
 	return nil, fmt.Errorf("no active client session")
 }
@@ -315,10 +336,15 @@ func (s *Server) handleReverseTCP(local net.Conn, target string) {
 
 	stream, err := s.openStream()
 	if err != nil {
-		if s.Verbose {
-			log.Printf("[RTCP] no session: %v", err)
+		// Brief retry — pool may be reconnecting
+		time.Sleep(2 * time.Second)
+		stream, err = s.openStream()
+		if err != nil {
+			if s.Verbose {
+				log.Printf("[RTCP] no session: %v", err)
+			}
+			return
 		}
-		return
 	}
 	defer stream.Close()
 
@@ -446,7 +472,10 @@ func (s *Server) validate(r *http.Request) (bool, string) {
 			host = h
 		}
 		if host != s.Mimic.FakeDomain && !strings.HasSuffix(host, "."+s.Mimic.FakeDomain) {
-			return false, "host"
+			// Allow IP-based connections (no domain match needed)
+			if net.ParseIP(host) == nil {
+				return false, "host"
+			}
 		}
 	}
 

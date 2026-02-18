@@ -176,10 +176,23 @@ func (c *EncryptedConn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-// ──────────────────── Padding (Dagger-style) ────────────────────
+// ──────────────────── Padding (PicoTun-style) ────────────────────
 // Format: [2B original_length][original_data][random_padding]
 // This is applied BEFORE encryption, so encrypted packet sizes don't
 // reveal real data sizes to DPI.
+
+// Decoy strings injected into padding to mimic HTTP traffic patterns.
+// Even though padding is encrypted, the SIZE patterns look more natural.
+var decoyPatterns = []string{
+	"User-Agent: ",
+	"GET / HTTP/1.1",
+	"POST / HTTP/1.1",
+	"Host: ",
+	"Accept: */*",
+	"Content-Type: application/octet-stream",
+	"Connection: keep-alive",
+	"Cache-Control: no-cache",
+}
 
 func addPadding(data []byte, obfs *ObfsConfig) []byte {
 	padLen := obfs.MinPadding
@@ -191,7 +204,18 @@ func addPadding(data []byte, obfs *ObfsConfig) []byte {
 	binary.BigEndian.PutUint16(out[:2], uint16(len(data)))
 	copy(out[2:], data)
 	if padLen > 0 {
-		rand.Read(out[2+len(data):])
+		paddingArea := out[2+len(data):]
+		rand.Read(paddingArea)
+
+		// Inject a decoy HTTP string if padding is large enough
+		if padLen > 12 {
+			decoyStr := decoyPatterns[secureRandInt(len(decoyPatterns))]
+			if len(decoyStr) < padLen {
+				maxOffset := padLen - len(decoyStr)
+				offset := secureRandInt(maxOffset + 1)
+				copy(paddingArea[offset:], []byte(decoyStr))
+			}
+		}
 	}
 	return out
 }

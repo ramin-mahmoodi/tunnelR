@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net"
 	"strings"
 	"sync"
@@ -19,6 +18,7 @@ import (
 // sessionMaxAge defines how long a session can live before being recycled.
 // Recycling prevents ISP/DPI throttling of long-lived connections.
 const sessionMaxAge = 20 * time.Minute
+const maxFailsBeforeSwitch = 3
 
 // pooledSession wraps a smux.Session with its creation timestamp
 // for connection recycling (anti-throttle).
@@ -65,7 +65,7 @@ func NewClient(cfg *Config) *Client {
 }
 
 // Start connects to the server using a pool of concurrent smux sessions.
-// Each path spawns ConnectionPool goroutines, each managing one session.
+// Pool workers cycle through paths on failure (Multi-IP Failover).
 func (c *Client) Start() error {
 	if len(c.paths) == 0 {
 		return fmt.Errorf("no paths configured")
@@ -73,34 +73,27 @@ func (c *Client) Start() error {
 
 	errCh := make(chan error, 1)
 
+	poolSize := c.paths[0].ConnectionPool
+	if poolSize <= 0 {
+		poolSize = 4
+	}
+
+	sc := buildSmuxConfig(c.cfg)
+	log.Printf("[CLIENT] pool=%d paths=%d profile=%s",
+		poolSize, len(c.paths), c.cfg.Profile)
+	for i, p := range c.paths {
+		log.Printf("[CLIENT]   path[%d]: %s (%s)", i, p.Addr, p.Transport)
+	}
+	log.Printf("[CLIENT] smux: keepalive=%v timeout=%v frame=%d",
+		sc.KeepAliveInterval, sc.KeepAliveTimeout, sc.MaxFrameSize)
+
 	go c.sessionHealthCheck()
 
-	for pathIdx, path := range c.paths {
-		poolSize := path.ConnectionPool
-		if poolSize <= 0 {
-			poolSize = 1
-		}
-		for i := 0; i < poolSize; i++ {
-			go func(pIdx, slotID int) {
-				attempt := 0
-				for {
-					start := time.Now()
-					err := c.connectAndServe(pIdx)
-					elapsed := time.Since(start)
-
-					if elapsed > 30*time.Second {
-						attempt = 0
-					}
-
-					attempt++
-					backoff := math.Min(float64(attempt)*2, 30)
-					delay := time.Duration(backoff) * time.Second
-
-					log.Printf("[POOL-%d] path[%d] disconnected: %v — reconnecting in %v", slotID, pIdx, err, delay)
-					atomic.AddInt64(&GlobalStats.Reconnects, 1)
-					time.Sleep(delay)
-				}
-			}(pathIdx, i)
+	for i := 0; i < poolSize; i++ {
+		go c.poolWorker(i)
+		// Stagger connections to avoid DPI pattern detection
+		if i < poolSize-1 {
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 
@@ -131,6 +124,60 @@ func (c *Client) Start() error {
 	return <-errCh
 }
 
+// poolWorker — one goroutine that cycles through paths on failure.
+// After maxFailsBeforeSwitch consecutive short-lived failures, switches to next path.
+func (c *Client) poolWorker(id int) {
+	pathIdx := 0
+	failCount := 0
+
+	for {
+		path := c.paths[pathIdx]
+		retryInterval := time.Duration(path.RetryInterval) * time.Second
+		if retryInterval <= 0 {
+			retryInterval = 3 * time.Second
+		}
+
+		connStart := time.Now()
+		err := c.connectAndServe(id, path)
+		connDuration := time.Since(connStart)
+
+		if err != nil {
+			alive := c.sessionCount()
+
+			// Only count short-lived failures as "blocked"
+			if connDuration < 30*time.Second {
+				failCount++
+			} else {
+				failCount = 0
+			}
+
+			// Switch to next path after N consecutive short failures
+			if failCount >= maxFailsBeforeSwitch && len(c.paths) > 1 {
+				oldIdx := pathIdx
+				pathIdx = (pathIdx + 1) % len(c.paths)
+				failCount = 0
+				log.Printf("[POOL#%d] path[%d] seems blocked → switching to path[%d] %s",
+					id, oldIdx, pathIdx, c.paths[pathIdx].Addr)
+
+				if pathIdx == 0 {
+					log.Printf("[POOL#%d] all paths tried, backing off 10s", id)
+					time.Sleep(10 * time.Second)
+					continue
+				}
+			} else {
+				log.Printf("[POOL#%d] disconnected from %s (alive: %d) — retry %v",
+					id, path.Addr, alive, retryInterval)
+			}
+
+			atomic.AddInt64(&GlobalStats.Reconnects, 1)
+			time.Sleep(retryInterval)
+		} else {
+			failCount = 0
+			time.Sleep(retryInterval)
+		}
+	}
+}
+
 // addSession adds a session to the pool with current timestamp.
 func (c *Client) addSession(sess *smux.Session) {
 	c.sessMu.Lock()
@@ -150,10 +197,18 @@ func (c *Client) removeSession(sess *smux.Session) {
 	c.sessMu.Unlock()
 }
 
-// connectAndServe establishes one smux session on the given path index and blocks until it dies.
-func (c *Client) connectAndServe(pathIdx int) error {
-	path := c.paths[pathIdx]
+func (c *Client) sessionCount() int {
+	c.sessMu.RLock()
+	defer c.sessMu.RUnlock()
+	return len(c.sessions)
+}
+
+// connectAndServe establishes one smux session on the given path and blocks until it dies.
+func (c *Client) connectAndServe(id int, path PathConfig) error {
 	transport := strings.ToLower(strings.TrimSpace(path.Transport))
+	if transport == "" {
+		transport = c.cfg.Transport
+	}
 	addr := strings.TrimSpace(path.Addr)
 	if addr == "" {
 		return fmt.Errorf("empty address")
@@ -169,10 +224,10 @@ func (c *Client) connectAndServe(pathIdx int) error {
 	dialAddr := net.JoinHostPort(host, port)
 
 	if c.verbose {
-		log.Printf("[CLIENT] connecting to %s (%s)", dialAddr, transport)
+		log.Printf("[POOL#%d] connecting to %s (%s)", id, dialAddr, transport)
 	}
 
-	// 1. Establish TCP/TLS connection (with optional TLS fragmentation)
+	// ① Dial TCP/TLS connection
 	var conn net.Conn
 	var err error
 
@@ -180,48 +235,37 @@ func (c *Client) connectAndServe(pathIdx int) error {
 	case "httpsmux", "wssmux":
 		conn, err = c.dialFragmentedTLS(dialAddr, dialTimeout)
 	case "httpmux", "wsmux":
-		// HTTP without TLS — still use fragmentation for TCP_NODELAY benefit
 		conn, err = DialFragmented(dialAddr, c.fragmentCfg(), dialTimeout)
 	default:
 		conn, err = net.DialTimeout("tcp", dialAddr, dialTimeout)
-		if err == nil {
-			// Enforce TCP_NODELAY for standard dials too
-			if tc, ok := conn.(*net.TCPConn); ok {
-				tc.SetNoDelay(true)
-			}
-		}
 	}
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
 
-	// 2. Mimicry handshake (HTTP GET + WebSocket Upgrade → 101)
+	c.setTCPOptions(conn)
+
+	// ② Mimicry handshake — returns bufferedConn
 	conn, err = ClientHandshake(conn, c.mimic)
 	if err != nil {
 		conn.Close()
 		return fmt.Errorf("handshake: %w", err)
 	}
-	if c.verbose {
-		log.Printf("[CLIENT] handshake OK")
-	}
 
-	// 3. Wrap with EncryptedConn (AES-GCM, like Dagger)
+	// ③ Encrypted connection (AES-256-GCM)
 	ec, err := NewEncryptedConn(conn, c.psk, c.obfs)
 	if err != nil {
 		conn.Close()
 		return fmt.Errorf("encrypt: %w", err)
 	}
 
-	// 3.5. Optional compression (snappy) between encryption and smux
+	// ③.5 Optional compression (snappy)
 	var smuxConn net.Conn = ec
 	if c.cfg.Compression != "" && c.cfg.Compression != "none" {
 		smuxConn = NewCompressedConn(ec, c.cfg.Compression)
-		if c.verbose {
-			log.Printf("[CLIENT] compression: %s", c.cfg.Compression)
-		}
 	}
 
-	// 4. smux client session (like Dagger)
+	// ④ smux session
 	sc := buildSmuxConfig(c.cfg)
 	sess, err := smux.Client(smuxConn, sc)
 	if err != nil {
@@ -230,25 +274,41 @@ func (c *Client) connectAndServe(pathIdx int) error {
 	}
 
 	c.addSession(sess)
-	log.Printf("[CLIENT] session established to %s (pool size: %d)", dialAddr, len(c.sessions))
+	count := c.sessionCount()
+	log.Printf("[POOL#%d] connected to %s (pool: %d)", id, dialAddr, count)
 
-	// 5. Accept streams from server (reverse tunnel direction)
-	//    Server opens stream → client dials target → relay
+	// ⑤ Accept reverse streams — blocks until session dies
 	for {
 		stream, err := sess.AcceptStream()
 		if err != nil {
 			c.removeSession(sess)
 			sess.Close()
-			return fmt.Errorf("accept: %w", err)
+			return fmt.Errorf("session closed: %w", err)
 		}
 		go c.handleReverseStream(stream)
 	}
 }
 
+// setTCPOptions applies keep-alive and no-delay options to TCP connections.
+func (c *Client) setTCPOptions(conn net.Conn) {
+	type hasTCP interface {
+		SetKeepAlive(bool) error
+		SetKeepAlivePeriod(time.Duration) error
+		SetNoDelay(bool) error
+	}
+	if tc, ok := conn.(hasTCP); ok {
+		tc.SetKeepAlive(true)
+		tc.SetKeepAlivePeriod(time.Duration(c.cfg.Advanced.TCPKeepAlive) * time.Second)
+		tc.SetNoDelay(c.cfg.Advanced.TCPNoDelay)
+	}
+}
+
 // handleReverseStream: server opened a stream asking us to dial a target.
-// Protocol: [2B target_len][target_string][... data ...]
 func (c *Client) handleReverseStream(stream *smux.Stream) {
 	defer stream.Close()
+
+	// Read deadline for header — prevents stuck streams
+	stream.SetReadDeadline(time.Now().Add(10 * time.Second))
 
 	hdr := make([]byte, 2)
 	if _, err := io.ReadFull(stream, hdr); err != nil {
@@ -262,6 +322,9 @@ func (c *Client) handleReverseStream(stream *smux.Stream) {
 	if _, err := io.ReadFull(stream, tBuf); err != nil {
 		return
 	}
+
+	// Clear deadline for data transfer
+	stream.SetReadDeadline(time.Time{})
 
 	network, addr := splitTarget(string(tBuf))
 	if c.verbose {
