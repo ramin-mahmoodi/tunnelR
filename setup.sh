@@ -737,32 +737,71 @@ install_client() {
 
 # ───────────── Dashboard Config ─────────────
 
-configure_dashboard() {
-    local MODE=$1
-    local SVC="picotun-${MODE}"
-    local CFG="$CONFIG_DIR/${MODE}.yaml"
-
-    [ ! -f "$CFG" ] && { echo -e "${RED}Config not found${NC}"; return; }
-
-    echo ""
+dashboard_menu() {
+    show_banner
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
-    echo -e "${CYAN}     DASHBOARD CONFIGURATION${NC}"
+    echo -e "${CYAN}     DASHBOARD MANAGEMENT${NC}"
     echo -e "${CYAN}═══════════════════════════════════════${NC}"
     echo ""
 
-    read -p "Enable Dashboard? [y/N]: " EN
+    # Detect installed modes
+    local modes=()
+    [ -f "$CONFIG_DIR/server.yaml" ] && modes+=("server")
+    [ -f "$CONFIG_DIR/client.yaml" ] && modes+=("client")
+
+    if [ ${#modes[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No TunnelR installation found.${NC}"
+        echo "Please install Server or Client first."
+        echo ""
+        read -p "Press Enter..."
+        main_menu
+        return
+    fi
+
+    local MODE=""
+    if [ ${#modes[@]} -eq 1 ]; then
+        MODE=${modes[0]}
+    else
+        echo "Select instance to manage:"
+        for i in "${!modes[@]}"; do
+            echo "  $((i+1))) ${modes[$i]}"
+        done
+        echo ""
+        read -p "Choice: " mc
+        if [[ "$mc" =~ ^[0-9]+$ ]] && [ "$mc" -le "${#modes[@]}" ] && [ "$mc" -gt 0 ]; then
+            MODE=${modes[$((mc-1))]}
+        else
+            main_menu
+            return
+        fi
+    fi
     
-    # Always strip existing dashboard config first
-    sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
+    local CFG="$CONFIG_DIR/${MODE}.yaml"
+    local SVC="picotun-${MODE}"
 
-    if [[ "$EN" =~ ^[Yy]$ ]]; then
+    show_banner
+    echo -e "${CYAN}Dashboard for: ${GREEN}${MODE^^}${NC}"
+    echo ""
+    echo "  1) Install / Update Dashboard"
+    echo "  2) Uninstall (Disable) Dashboard"
+    echo "  3) Reset Admin Password"
+    echo ""
+    echo "  0) Back to Main Menu"
+    echo ""
+    read -p "Choice: " c
+
+    if [ "$c" == "1" ] || [ "$c" == "3" ]; then
         echo ""
         read -p "Dashboard User [admin]: " DASH_USER
         DASH_USER=${DASH_USER:-admin}
         read -p "Dashboard Pass [admin]: " DASH_PASS
         DASH_PASS=${DASH_PASS:-admin}
         SESSION_SECRET=$(openssl rand -hex 16)
-
+        
+        # Strip old
+        sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
+        
+        # Append new
         cat >> "$CFG" << EOF
 
 # DASHBOARD-CONFIG-START
@@ -774,17 +813,32 @@ dashboard:
   session_secret: "${SESSION_SECRET}"
 EOF
         echo -e "${GREEN}✓ Dashboard configured.${NC}"
-    else
-        echo -e "${YELLOW}Dashboard disabled (config removed).${NC}"
+        
+        read -p "Restart service now? [Y/n]: " r
+        if [[ ! "$r" =~ ^[Nn]$ ]]; then
+            systemctl restart "$SVC"
+            echo -e "${GREEN}✓ Service restarted.${NC}"
+            echo -e "Access at: http://YOUR_IP:8080"
+        fi
+        
+    elif [ "$c" == "2" ]; then
+        sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
+        echo -e "${GREEN}✓ Dashboard disabled.${NC}"
+        
+        read -p "Restart service now? [Y/n]: " r
+        if [[ ! "$r" =~ ^[Nn]$ ]]; then
+            systemctl restart "$SVC"
+            echo -e "${GREEN}✓ Service restarted.${NC}"
+        fi
+        
+    elif [ "$c" == "0" ]; then
+        main_menu
+        return
     fi
 
     echo ""
-    read -p "Restart service to apply? [Y/n]: " r
-    if [[ ! "$r" =~ ^[Nn]$ ]]; then
-        systemctl restart "$SVC"
-        echo -e "${GREEN}✓ Service restarted${NC}"
-    fi
-    service_management "$MODE"
+    read -p "Press Enter..."
+    dashboard_menu
 }
 
 # ───────────── Service Management ─────────────
@@ -813,7 +867,6 @@ service_management() {
     echo "  4) Status         8) View Config"
     echo "                    9) Edit Config"
     echo "                   10) Delete Config & Service"
-    echo "                   11) Configure Dashboard"
     echo ""
     echo "  0) Back"
     echo ""
@@ -847,7 +900,6 @@ service_management() {
                 echo -e "${GREEN}✓ Deleted${NC}"; sleep 1
             fi
             settings_menu ;;
-        11) configure_dashboard "$MODE" ;;
         0) settings_menu ;;
         *) service_management "$MODE" ;;
     esac
@@ -950,10 +1002,11 @@ main_menu() {
     echo ""
     echo "  1) Install Server (Iran)"
     echo "  2) Install Client (Kharej)"
-    echo "  3) Settings (Manage Services)"
-    echo "  4) System Optimizer"
-    echo "  5) Update PicoTun"
-    echo "  6) Uninstall"
+    echo "  3) Dashboard Panel (Install/Uninstall)"
+    echo "  4) Settings (Manage Services)"
+    echo "  5) System Optimizer"
+    echo "  6) Update PicoTun"
+    echo "  7) Uninstall"
     echo ""
     echo "  0) Exit"
     echo ""
@@ -962,10 +1015,11 @@ main_menu() {
     case $c in
         1) install_server ;;
         2) install_client ;;
-        3) settings_menu ;;
-        4) optimize_system; echo ""; read -p "Press Enter..."; main_menu ;;
-        5) update_binary ;;
-        6) uninstall ;;
+        3) dashboard_menu ;;
+        4) settings_menu ;;
+        5) optimize_system; echo ""; read -p "Press Enter..."; main_menu ;;
+        6) update_binary ;;
+        7) uninstall ;;
         0) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
         *) main_menu ;;
     esac
