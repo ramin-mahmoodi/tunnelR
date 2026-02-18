@@ -817,7 +817,7 @@ install_dashboard_assets() {
         </a>
         <a onclick="setView('tunnels')" class="nav-item flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-lg font-medium transition-colors cursor-pointer">
             <span class="material-symbols-outlined text-[22px]">hub</span>
-            <span>Tunnels</span>
+            <span>Tunnel Status</span>
         </a>
         <a onclick="setView('logs')" class="nav-item flex items-center gap-3 px-3 py-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-lg font-medium transition-colors cursor-pointer">
             <span class="material-symbols-outlined text-[22px]">terminal</span>
@@ -899,7 +899,7 @@ install_dashboard_assets() {
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-sm font-medium text-slate-500 mb-1">Latency (Google)</p>
-                            <h3 class="text-3xl font-bold tracking-tight"><span id="ping-val">...</span><span class="text-lg text-slate-400 font-medium">ms</span></h3>
+                            <h3 class="text-3xl font-bold tracking-tight"><span id="ping-val">--</span><span class="text-lg text-slate-400 font-medium">ms</span></h3>
                         </div>
                         <div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-500">
                             <span class="material-symbols-outlined">network_check</span>
@@ -981,40 +981,57 @@ install_dashboard_assets() {
 
         <!-- SETTINGS VIEW -->
         <div id="view-settings" class="view">
-             <div class="glass-card rounded-xl p-6">
-                 <div class="flex justify-between items-center mb-4">
-                     <div>
-                        <h3 class="text-lg font-bold">Configuration</h3>
-                        <p class="text-slate-500 text-sm">Update server settings.</p>
-                     </div>
-                     <div class="flex gap-2">
-                        <button onclick="toggleEditMode()" class="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm hover:bg-slate-600 transition-colors">Advanced Editor</button>
-                        <button onclick="saveConfig()" class="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors">Save & Restart</button>
-                     </div>
-                 </div>
-                 
-                 <div id="config-form" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-400 mb-1">Listen Address</label>
-                            <input type="text" id="conf-listen" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-400 mb-1">PSK (Password)</label>
-                            <input type="text" id="conf-psk" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-400 mb-1">Mimic SNI (Camouflage)</label>
-                            <input type="text" id="conf-mimic" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                        </div>
-                         <div>
-                            <label class="block text-sm font-medium text-slate-400 mb-1">Obfuscation SNI</label>
-                            <input type="text" id="conf-obfs" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
-                        </div>
-                    </div>
-                 </div>
+             <!-- Advanced Mode Toggle -->
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-lg font-bold">Configuration Editor</h3>
+                    <p class="text-sm text-slate-500">Modify tunnel settings</p>
+                </div>
+                <button onclick="toggleEditMode()" class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">code</span>
+                    <span id="edit-mode-btn-text">Advanced Editor</span>
+                </button>
+            </div>
 
-                 <textarea id="config-editor" class="hidden" spellcheck="false"></textarea>
+            <!-- Form Mode -->
+            <div id="cfg-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">Listen Address</label>
+                        <input type="text" id="cfg-listen" placeholder=":8080" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">PSK (Password)</label>
+                        <input type="password" id="cfg-psk" placeholder="Secret Key" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">Mimic SNI (Host)</label>
+                        <input type="text" id="cfg-sni" placeholder="www.google.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                     <div class="space-y-1">
+                        <label class="text-sm font-medium text-slate-700">Obfuscation SNI</label>
+                        <input type="text" id="cfg-obs" placeholder="www.google.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="space-y-1">
+                         <label class="text-sm font-medium text-slate-700">Timeout (s)</label>
+                         <input type="number" id="cfg-timeout" placeholder="60" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                     <div class="space-y-1">
+                         <label class="text-sm font-medium text-slate-700">Keep Alive (s)</label>
+                         <input type="number" id="cfg-keepalive" placeholder="30" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                     <div class="space-y-1">
+                         <label class="text-sm font-medium text-slate-700">Max Buffers</label>
+                         <input type="number" id="cfg-buffers" placeholder="1048576" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                    </div>
+                </div>
+            </div>      <textarea id="config-editor" class="hidden" spellcheck="false"></textarea>
              </div>
         </div>
 
@@ -1202,18 +1219,22 @@ setInterval(() => {
 // Logs
 let es = null;
 
-function filterLogs() {
-    const filter = $('#log-filter').value;
-    const lines = document.querySelectorAll('#logs-out div');
-    lines.forEach(l => {
-        const txt = l.innerText.toLowerCase();
-        if(filter === 'all') l.style.display = 'block';
-        else if(filter === 'error' && !txt.includes('error') && !txt.includes('fail')) l.style.display = 'none';
-        else if(filter === 'warning' && !txt.includes('warn') && !txt.includes('error')) l.style.display = 'none';
-        else l.style.display = 'block';
-    });
-}
+    function filterLogs(level) {
+        currentFilter = level;
+        const logContainer = document.getElementById('log-container');
+        const logs = logContainer.getElementsByClassName('log-entry');
+        
+        for (let log of logs) {
+            const text = log.innerText.toLowerCase();
+            let show = false;
 
+            if (level === 'all') show = true;
+            if (level === 'error' && text.includes('error')) show = true;
+            if (level === 'warn' && (text.includes('warn') || text.includes('error'))) show = true;
+
+            log.style.display = show ? 'block' : 'none';
+        }
+    }
 function startLogs() {
     if(es) return;
     const el = $('#logs-out');
@@ -1244,30 +1265,37 @@ async function loadConfig(raw=false) {
     const txt = await r.text();
     $('#config-editor').value = txt;
     
-    if(!raw && $('#conf-listen')) {
+    if(!raw && $('#cfg-listen')) {
         const getVal = (k) => {
             const m = txt.match(new RegExp(`^\\s*${k}:\\s*"?([^"\\n]+)"?`, 'm'));
             return m ? m[1] : '';
         };
-        $('#conf-listen').value = getVal('listen');
-        $('#conf-psk').value = getVal('psk');
+        $('#cfg-listen').value = getVal('listen');
+        $('#cfg-psk').value = getVal('psk');
         
         const mimic = txt.match(/mimic:\s*\n\s*target:\s*"?([^"\n]+)"?/);
-        if(mimic) $('#conf-mimic').value = mimic[1];
+        if(mimic) $('#cfg-sni').value = mimic[1];
         
         const obfs = txt.match(/obfs:\s*\n\s*secret:\s*"?([^"\n]+)"?/);
-        if(obfs) $('#conf-obfs').value = obfs[1];
+        if(obfs) $('#cfg-obs').value = obfs[1];
+
+        $('#cfg-timeout').value = getVal('timeout');
+        $('#cfg-keepalive').value = getVal('keep_alive');
+        $('#cfg-buffers').value = getVal('max_buffers');
     }
 }
 
 function toggleEditMode() {
-    const form = $('#config-form');
+    const form = $('#cfg-form');
     const editor = $('#config-editor');
+    const btnText = $('#edit-mode-btn-text');
     if(editor.classList.contains('hidden')) {
         editor.classList.remove('hidden'); form.classList.add('hidden');
+        btnText.innerText = 'Form Editor';
         loadConfig(true); 
     } else {
         editor.classList.add('hidden'); form.classList.remove('hidden');
+        btnText.innerText = 'Advanced Editor';
         loadConfig(false);
     }
 }
@@ -1278,27 +1306,54 @@ async function saveConfig() {
     
     if($('#config-editor').classList.contains('hidden')) {
         // Form Mode
-        let txt = body;
-        const lis = $('#conf-listen').value;
-        const psk = $('#conf-psk').value;
-        const mim = $('#conf-mimic').value;
-        const obf = $('#conf-obfs').value;
+        let newConfig = body; // Use a new variable to build the updated config
         
-        if(txt.match(/listen:\s*".*?"/)) txt = txt.replace(/listen:\s*".*?"/, `listen: "${lis}"`);
-        else txt = txt.replace(/listen:\s*\S+/, `listen: ${lis}`);
+        const listen = document.getElementById('cfg-listen').value;
+        const psk = document.getElementById('cfg-psk').value;
+        const sni = document.getElementById('cfg-sni').value;
+        const obs = document.getElementById('cfg-obs').value;
+        const timeout = document.getElementById('cfg-timeout').value;
+        const keepalive = document.getElementById('cfg-keepalive').value;
+        const buffers = document.getElementById('cfg-buffers').value;
 
-        if(txt.match(/psk:\s*".*?"/)) txt = txt.replace(/psk:\s*".*?"/, `psk: "${psk}"`);
-        else txt = txt.replace(/psk:\s*\S+/, `psk: ${psk}`);
+        // Helper to replace or add a key-value pair
+        const replaceOrAdd = (config, key, value, isString = true) => {
+            const regex = new RegExp(`^(\\s*${key}:\\s*)(.*)`, 'm');
+            if (config.match(regex)) {
+                return config.replace(regex, `$1${isString ? `"${value}"` : value}`);
+            } else {
+                // If key doesn't exist, add it at the end (or a logical place)
+                // For simplicity, appending to the end of the main block
+                return config + `\n${key}: ${isString ? `"${value}"` : value}`;
+            }
+        };
 
-        txt = txt.replace(/(mimic:\s*\n\s*target:\s*").*?"/, `$1${mim}"`);
-        txt = txt.replace(/(obfs:\s*\n\s*secret:\s*").*?"/, `$1${obf}"`);
+        newConfig = replaceOrAdd(newConfig, 'listen', listen);
+        newConfig = replaceOrAdd(newConfig, 'psk', psk);
+
+        // Handle nested mimic and obfs
+        if (newConfig.includes('mimic:')) {
+            newConfig = newConfig.replace(/(mimic:\s*\n\s*target:\s*").*?"/, `$1${sni}"`);
+        } else if (sni) {
+            newConfig += `\nmimic:\n  target: "${sni}"`;
+        }
+
+        if (newConfig.includes('obfs:')) {
+            newConfig = newConfig.replace(/(obfs:\s*\n\s*secret:\s*").*?"/, `$1${obs}"`);
+        } else if (obs) {
+            newConfig += `\nobfs:\n  secret: "${obs}"`;
+        }
         
-        body = txt;
+        newConfig = replaceOrAdd(newConfig, 'timeout', timeout, false);
+        newConfig = replaceOrAdd(newConfig, 'keep_alive', keepalive, false);
+        newConfig = replaceOrAdd(newConfig, 'max_buffers', buffers, false);
+        
+        body = newConfig;
     }
     
     await fetch('/api/config', {method:'POST', body: body});
     await fetch('/api/restart', {method:'POST'});
-    alert('Restarting...');
+    alert('Restarting... Page will reload.');
     setTimeout(()=>location.reload(), 5000);
 }
 
@@ -1314,7 +1369,7 @@ async function updateStats() {
         // Basic Stats
         $('#cpu-val').innerText = d.cpu || 0;
         $('#ram-val').innerText = d.ram || '0 B';
-        $('#uptime-val').innerText = d.uptime || '0s';
+        // $('#uptime-val').innerText = d.uptime || '0s'; // Original line
 
         // Ping
         if(d.ping_ms && d.ping_ms > -1) {
@@ -1327,7 +1382,19 @@ async function updateStats() {
         }
 
         // Chart
-        const now = new Date().toLocaleTimeString();
+        if (d.start_time) {
+            const start = new Date(d.start_time);
+            const now = new Date();
+            const diff = Math.floor((now - start) / 1000); // seconds
+            
+            let uptimeStr = "";
+            if (diff < 60) uptimeStr = diff + "s";
+            else if (diff < 3600) uptimeStr = Math.floor(diff/60) + "m " + (diff%60) + "s";
+            else if (diff < 86400) uptimeStr = Math.floor(diff/3600) + "h " + Math.floor((diff%3600)/60) + "m";
+            else uptimeStr = Math.floor(diff/86400) + "d " + Math.floor((diff%86400)/3600) + "h";
+
+            document.getElementById('uptime-val').innerText = uptimeStr;
+        }
         if(chartInstance) {
             const up = (d.stats.bytes_sent - lastBytesSent) / 1024; // KB
             const down = (d.stats.bytes_recv - lastBytesRecv) / 1024; // KB
@@ -1384,35 +1451,38 @@ async function loadConfig(raw=false) {
     const txt = await r.text();
     $('#config-editor').value = txt;
     
-    if(!raw) {
+    if(!raw && $('#cfg-listen')) {
         // Parse basic yaml keys using regex
         const getVal = (k) => {
             const m = txt.match(new RegExp(`^\\s*${k}:\\s*"?([^"\\n]+)"?`, 'm'));
             return m ? m[1] : '';
         };
-        // Specific case for nested mimic keys? 
-        // We do simple scan. "listen: ..."
-        $('#conf-listen').value = getVal('listen');
-        $('#conf-psk').value = getVal('psk');
+        $('#cfg-listen').value = getVal('listen');
+        $('#cfg-psk').value = getVal('psk');
         
-        // Obfs/Mimic might be nested. 
-        // mimic: target: ...
         const mimic = txt.match(/mimic:\s*\n\s*target:\s*"?([^"\n]+)"?/);
-        if(mimic) $('#conf-mimic').value = mimic[1];
+        if(mimic) $('#cfg-sni').value = mimic[1];
         
         const obfs = txt.match(/obfs:\s*\n\s*secret:\s*"?([^"\n]+)"?/);
-        if(obfs) $('#conf-obfs').value = obfs[1];
+        if(obfs) $('#cfg-obs').value = obfs[1];
+
+        $('#cfg-timeout').value = getVal('timeout');
+        $('#cfg-keepalive').value = getVal('keep_alive');
+        $('#cfg-buffers').value = getVal('max_buffers');
     }
 }
 
 function toggleEditMode() {
-    const form = $('#config-form');
+    const form = $('#cfg-form');
     const editor = $('#config-editor');
+    const btnText = $('#edit-mode-btn-text');
     if(editor.classList.contains('hidden')) {
         editor.classList.remove('hidden'); form.classList.add('hidden');
+        btnText.innerText = 'Form Editor';
         loadConfig(true); 
     } else {
         editor.classList.add('hidden'); form.classList.remove('hidden');
+        btnText.innerText = 'Advanced Editor';
         loadConfig(false);
     }
 }
