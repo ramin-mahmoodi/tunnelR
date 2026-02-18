@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 # ===============================================================
 # ----------------------------------------------------------------
@@ -21,7 +21,7 @@ NC='[0m'
 
 # Modern Separators
 draw_line() {
-    printf "${CYAN}â”€%.0s${NC}" {1..60}
+    printf "${CYAN}%.0s${NC}" {1..60}
     echo ""
 }
 
@@ -68,28 +68,28 @@ show_banner() {
     echo "  |  __/| | (_| (_) | | || |_| | | | |  "
     echo "  |_|   |_|\___\___/  |_| \__,_|_| |_|  "
     echo -e "${NC}"
-    echo -e "${PURPLE}   â–¶ Dagger-Compatible Reverse Tunnel v${SCRIPT_VERSION}${NC}"
-    echo -e "${BLUE}   â–¶ github.com/${GITHUB_REPO}${NC}"
+    echo -e "${PURPLE}   > Dagger-Compatible Reverse Tunnel v${SCRIPT_VERSION}${NC}"
+    echo -e "${BLUE}   > github.com/${GITHUB_REPO}${NC}"
     echo ""
 }
 
 
 check_root() {
     if [[ $EUID -ne 0 ]]; then
-        echo -e "${RED}âŒ This script must be run as root${NC}"
+        echo -e "${RED} This script must be run as root${NC}"
         exit 1
     fi
 }
 
 install_dependencies() {
-    echo -e "${YELLOW}ðŸ“¦ Installing dependencies...${NC}"
+    echo -e "${YELLOW}* Installing dependencies...${NC}"
     if command -v apt &>/dev/null; then
         apt update -qq 2>/dev/null
         apt install -y wget curl tar openssl iproute2 > /dev/null 2>&1
     elif command -v yum &>/dev/null; then
         yum install -y wget curl tar openssl iproute > /dev/null 2>&1
     fi
-    echo -e "${GREEN}âœ“ Dependencies ready${NC}"
+    echo -e "${GREEN}[OK] Dependencies ready${NC}"
 }
 
 detect_arch() {
@@ -97,7 +97,7 @@ detect_arch() {
     case $ARCH in
         x86_64|amd64) ARCH="amd64" ;;
         aarch64|arm64) ARCH="arm64" ;;
-        *) echo -e "${RED}âŒ Unsupported architecture: $ARCH${NC}"; exit 1 ;;
+        *) echo -e "${RED} Unsupported architecture: $ARCH${NC}"; exit 1 ;;
     esac
 }
 
@@ -118,7 +118,7 @@ download_binary() {
     mkdir -p "$INSTALL_DIR"
     detect_arch
 
-    echo -e "  â•¯ Checking latest release..."
+    echo -e "   Checking latest release..."
     LATEST_VERSION=$(curl -s "$LATEST_RELEASE_API" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
 
     if [ -z "$LATEST_VERSION" ]; then
@@ -127,7 +127,7 @@ download_binary() {
     fi
 
     TAR_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/picotun-${LATEST_VERSION}-linux-${ARCH}.tar.gz"
-    echo -e "  â•¯ Version: ${GREEN}${LATEST_VERSION}${NC} (${ARCH})"
+    echo -e "   Version: ${GREEN}${LATEST_VERSION}${NC} (${ARCH})"
 
     # Backup
     [ -f "$INSTALL_DIR/$BINARY_NAME" ] && cp "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/${BINARY_NAME}.bak"
@@ -135,7 +135,7 @@ download_binary() {
     TMP_DIR=$(mktemp -d)
     
     # Download with animation
-    echo -ne "  â•¯ Downloading... "
+    echo -ne "   Downloading... "
     (wget -q "$TAR_URL" -O "$TMP_DIR/picotun.tar.gz") &
     spinner $!
     echo -e "${GREEN}Done${NC}"
@@ -146,11 +146,11 @@ download_binary() {
         chmod +x "$INSTALL_DIR/$BINARY_NAME"
         rm -rf "$TMP_DIR"
         rm -f "$INSTALL_DIR/${BINARY_NAME}.bak"
-        echo -e "\n${GREEN}  âœ“ Installation Successful${NC}"
+        echo -e "\n${GREEN}  [OK] Installation Successful${NC}"
     else
         rm -rf "$TMP_DIR"
         [ -f "$INSTALL_DIR/${BINARY_NAME}.bak" ] && mv "$INSTALL_DIR/${BINARY_NAME}.bak" "$INSTALL_DIR/$BINARY_NAME"
-        echo -e "\n${RED}  âœ– Download Failed${NC}"
+        echo -e "\n${RED}  [OK] Download Failed${NC}"
         exit 1
     fi
 }
@@ -172,7 +172,7 @@ generate_ssl_cert() {
 
     CERT_FILE="$CONFIG_DIR/certs/cert.pem"
     KEY_FILE="$CONFIG_DIR/certs/key.pem"
-    echo -e "${GREEN}âœ“ SSL certificate generated${NC}"
+    echo -e "${GREEN}[OK] SSL certificate generated${NC}"
 }
 
 # ----------------------------------------------------------------
@@ -202,13 +202,13 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
-    echo -e "${GREEN}âœ“ Service ${SERVICE_NAME} created${NC}"
+    echo -e "${GREEN}[OK] Service ${SERVICE_NAME} created${NC}"
 }
 
 # ----------------------------------------------------------------
 
 optimize_system() {
-    echo -e "${YELLOW}âš™ï¸  Optimizing system...${NC}"
+    echo -e "${YELLOW}[*]  Optimizing system...${NC}"
 
     cat > /etc/sysctl.d/99-picotun.conf << 'EOF'
 net.core.rmem_max=16777216
@@ -236,7 +236,7 @@ net.ipv4.tcp_max_tw_buckets=1440000
 EOF
 
     sysctl -p /etc/sysctl.d/99-picotun.conf > /dev/null 2>&1
-    echo -e "${GREEN}âœ“ System optimized (BBR + buffer tuning)${NC}"
+    echo -e "${GREEN}[OK] System optimized (BBR + buffer tuning)${NC}"
 }
 
 # ----------------------------------------------------------------
@@ -251,9 +251,9 @@ parse_port_mappings() {
     draw_line
     echo ""
     echo -e "${YELLOW}Format:${NC}"
-    echo -e "  ${GREEN}Single${NC}:    8443              â†’ 8443â†’8443"
-    echo -e "  ${GREEN}Range${NC}:     1000/2000         â†’ 1000â†’1000 ... 2000â†’2000"
-    echo -e "  ${GREEN}Custom${NC}:    5000=8443         â†’ 5000â†’8443"
+    echo -e "  ${GREEN}Single${NC}:    8443               84438443"
+    echo -e "  ${GREEN}Range${NC}:     1000/2000          10001000 ... 20002000"
+    echo -e "  ${GREEN}Custom${NC}:    5000=8443          50008443"
     echo -e "  ${GREEN}Range Map${NC}: 1000/1010=2000/2010"
     echo ""
 
@@ -273,7 +273,7 @@ parse_port_mappings() {
         echo -e "${YELLOW}Examples: 8443 | 1000/2000 | 5000=8443${NC}"
         read -p "Port(s): " PORT_INPUT
 
-        [ -z "$PORT_INPUT" ] && { echo -e "${RED}âš  Empty!${NC}"; continue; }
+        [ -z "$PORT_INPUT" ] && { echo -e "${RED}[*] Empty!${NC}"; continue; }
         PORT_INPUT=$(echo "$PORT_INPUT" | tr -d ' ')
 
         # Range Map: 1000/1010=2000/2010
@@ -284,7 +284,7 @@ parse_port_mappings() {
             for ((i=0; i<BR; i++)); do
                 add_mapping "$PROTO" "${BIND_IP}:$((BS+i))" "${TARGET_IP}:$((TS+i))"
             done
-            echo -e "${GREEN}âœ“ Added $BR mappings ($PROTO)${NC}"
+            echo -e "${GREEN}[OK] Added $BR mappings ($PROTO)${NC}"
 
         # Range: 1000/2000
         elif [[ "$PORT_INPUT" =~ ^([0-9]+)/([0-9]+)$ ]]; then
@@ -292,20 +292,20 @@ parse_port_mappings() {
             for ((p=SP; p<=EP; p++)); do
                 add_mapping "$PROTO" "${BIND_IP}:${p}" "${TARGET_IP}:${p}"
             done
-            echo -e "${GREEN}âœ“ Added $((EP-SP+1)) mappings ($PROTO)${NC}"
+            echo -e "${GREEN}[OK] Added $((EP-SP+1)) mappings ($PROTO)${NC}"
 
         # Custom: 5000=8443
         elif [[ "$PORT_INPUT" =~ ^([0-9]+)=([0-9]+)$ ]]; then
             add_mapping "$PROTO" "${BIND_IP}:${BASH_REMATCH[1]}" "${TARGET_IP}:${BASH_REMATCH[2]}"
-            echo -e "${GREEN}âœ“ ${BASH_REMATCH[1]} â†’ ${BASH_REMATCH[2]} ($PROTO)${NC}"
+            echo -e "${GREEN}[OK] ${BASH_REMATCH[1]}  ${BASH_REMATCH[2]} ($PROTO)${NC}"
 
         # Single: 8443
         elif [[ "$PORT_INPUT" =~ ^[0-9]+$ ]]; then
             add_mapping "$PROTO" "${BIND_IP}:${PORT_INPUT}" "${TARGET_IP}:${PORT_INPUT}"
-            echo -e "${GREEN}âœ“ ${PORT_INPUT} â†’ ${PORT_INPUT} ($PROTO)${NC}"
+            echo -e "${GREEN}[OK] ${PORT_INPUT}  ${PORT_INPUT} ($PROTO)${NC}"
 
         else
-            echo -e "${RED}âš  Invalid format!${NC}"; continue
+            echo -e "${RED}[*] Invalid format!${NC}"; continue
         fi
 
         read -p "Add another? [y/N]: " more
@@ -313,7 +313,7 @@ parse_port_mappings() {
     done
 
     [ "$COUNT" -eq 0 ] && {
-        echo -e "${YELLOW}âš  No ports! Adding 8080â†’8080 default${NC}"
+        echo -e "${YELLOW}[*] No ports! Adding 80808080 default${NC}"
         add_mapping "tcp" "0.0.0.0:8080" "127.0.0.1:8080"
     }
 }
@@ -333,7 +333,7 @@ add_mapping() {
 # ----------------------------------------------------------------
 
 optimize_system() {
-    echo -e "${CYAN}ðŸš€ Optimizing System Network Stack...${NC}"
+    echo -e "${CYAN}* Optimizing System Network Stack...${NC}"
     IFACE=$(ip link show | grep "state UP" | head -1 | awk '{print $2}' | cut -d: -f1)
     [[ -z "$IFACE" ]] && IFACE="eth0"
     echo -e "  Interface: ${PURPLE}$IFACE${NC}"
@@ -390,7 +390,7 @@ EOF
 
     # Apply changes
     sysctl -p /etc/sysctl.d/99-rstunnel-opt.conf > /dev/null 2>&1
-    echo -e "${GREEN}âœ“ System optimized for high throughput${NC}"
+    echo -e "${GREEN}[OK] System optimized for high throughput${NC}"
 }
 
 # ----------------------------------------------------------------
@@ -413,7 +413,7 @@ install_server_auto() {
 
     echo ""
     echo -e "${YELLOW}Transport:${NC}"
-    echo "  1) httpsmux  - HTTPS Mimicry â­ Recommended"
+    echo "  1) httpsmux  - HTTPS Mimicry  Recommended"
     echo "  2) httpmux   - HTTP Mimicry"
     echo "  3) tcpmux    - Simple TCP"
     read -p "Choice [1-3]: " tc
@@ -526,9 +526,9 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
-    echo -e "${GREEN}   âœ“ Server installed & running!${NC}"
-    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${GREEN}${NC}"
+    echo -e "${GREEN}   [OK] Server installed & running!${NC}"
+    echo -e "${GREEN}${NC}"
     echo ""
     echo -e "  Port:      ${GREEN}${LISTEN_PORT}${NC}"
     echo -e "  PSK:       ${GREEN}${PSK}${NC}"
@@ -557,7 +557,7 @@ install_client_auto() {
 
     echo ""
     echo -e "${YELLOW}Transport (must match server):${NC}"
-    echo "  1) httpsmux  - HTTPS Mimicry â­"
+    echo "  1) httpsmux  - HTTPS Mimicry "
     echo "  2) httpmux   - HTTP Mimicry"
     echo "  3) tcpmux    - Simple TCP"
     read -p "Choice [1-3]: " tc
@@ -658,9 +658,9 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
-    echo -e "${GREEN}   âœ“ Client installed & running!${NC}"
-    echo -e "${GREEN}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${GREEN}${NC}"
+    echo -e "${GREEN}   [OK] Client installed & running!${NC}"
+    echo -e "${GREEN}${NC}"
     echo ""
     echo -e "  Server:    ${GREEN}${SERVER_ADDR}${NC}"
     echo -e "  PSK:       ${GREEN}${PSK}${NC}"
@@ -686,7 +686,7 @@ install_server_manual() {
     echo "  2) wsmux     - WebSocket"
     echo "  3) wssmux    - WebSocket Secure (TLS)"
     echo "  4) httpmux   - HTTP Mimicry (DPI bypass)"
-    echo "  5) httpsmux  - HTTPS Mimicry â­"
+    echo "  5) httpsmux  - HTTPS Mimicry "
     read -p "Choice [1-5]: " tc
     case $tc in
         1) TRANSPORT="tcpmux" ;; 2) TRANSPORT="wsmux" ;; 3) TRANSPORT="wssmux" ;;
@@ -812,7 +812,7 @@ EOF
     fi
 
     echo ""
-    echo -e "${GREEN}âœ“ Server installed! Port=${LISTEN_PORT} Transport=${TRANSPORT}${NC}"
+    echo -e "${GREEN}[OK] Server installed! Port=${LISTEN_PORT} Transport=${TRANSPORT}${NC}"
     echo -e "  Logs: journalctl -u picotun-server -f"
     read -p "Press Enter..."
     main_menu
@@ -1487,12 +1487,12 @@ dashboard:
   pass: "${DASH_PASS}"
   session_secret: "${SESSION_SECRET}"
 EOF
-        echo -e "${GREEN}âœ“ Dashboard configured.${NC}"
+        echo -e "${GREEN}[OK] Dashboard configured.${NC}"
         
         read -p "Restart service now? [Y/n]: " r
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
             systemctl restart "$SVC"
-            echo -e "${GREEN}âœ“ Service restarted.${NC}"
+            echo -e "${GREEN}[OK] Service restarted.${NC}"
             echo -e "Access at: http://YOUR_IP:8080"
         fi
         
@@ -1500,12 +1500,12 @@ EOF
         # Uninstall
         rm -rf /var/lib/picotun/dashboard
         sed -i '/# DASHBOARD-CONFIG-START/,$d' "$CFG"
-        echo -e "${GREEN}âœ“ Dashboard uninstalled (files removed).${NC}"
+        echo -e "${GREEN}[OK] Dashboard uninstalled (files removed).${NC}"
         
         read -p "Restart service now? [Y/n]: " r
         if [[ ! "$r" =~ ^[Nn]$ ]]; then
             systemctl restart "$SVC"
-            echo -e "${GREEN}âœ“ Service restarted.${NC}"
+            echo -e "${GREEN}[OK] Service restarted.${NC}"
         fi
         
     elif [ "$c" == "0" ]; then
@@ -1532,9 +1532,9 @@ service_management() {
 
     # Status
     if systemctl is-active "$SVC" &>/dev/null; then
-        echo -e "  Status: ${GREEN}â— Running${NC}"
+        echo -e "  Status: ${GREEN} Running${NC}"
     else
-        echo -e "  Status: ${RED}â— Stopped${NC}"
+        echo -e "  Status: ${RED} Stopped${NC}"
     fi
     echo ""
 
@@ -1550,13 +1550,13 @@ service_management() {
     read -p "Choice: " c
 
     case $c in
-        1) systemctl start "$SVC"; echo -e "${GREEN}âœ“ Started${NC}"; sleep 1; service_management "$MODE" ;;
-        2) systemctl stop "$SVC"; echo -e "${GREEN}âœ“ Stopped${NC}"; sleep 1; service_management "$MODE" ;;
-        3) systemctl restart "$SVC"; echo -e "${GREEN}âœ“ Restarted${NC}"; sleep 1; service_management "$MODE" ;;
+        1) systemctl start "$SVC"; echo -e "${GREEN}[OK] Started${NC}"; sleep 1; service_management "$MODE" ;;
+        2) systemctl stop "$SVC"; echo -e "${GREEN}[OK] Stopped${NC}"; sleep 1; service_management "$MODE" ;;
+        3) systemctl restart "$SVC"; echo -e "${GREEN}[OK] Restarted${NC}"; sleep 1; service_management "$MODE" ;;
         4) systemctl status "$SVC" --no-pager; read -p "Enter..."; service_management "$MODE" ;;
         5) journalctl -u "$SVC" -f ;;
-        6) systemctl enable "$SVC" 2>/dev/null; echo -e "${GREEN}âœ“ Auto-start enabled${NC}"; sleep 1; service_management "$MODE" ;;
-        7) systemctl disable "$SVC" 2>/dev/null; echo -e "${GREEN}âœ“ Auto-start disabled${NC}"; sleep 1; service_management "$MODE" ;;
+        6) systemctl enable "$SVC" 2>/dev/null; echo -e "${GREEN}[OK] Auto-start enabled${NC}"; sleep 1; service_management "$MODE" ;;
+        7) systemctl disable "$SVC" 2>/dev/null; echo -e "${GREEN}[OK] Auto-start disabled${NC}"; sleep 1; service_management "$MODE" ;;
         8) [ -f "$CFG" ] && cat "$CFG" || echo -e "${RED}Config not found${NC}"; read -p "Enter..."; service_management "$MODE" ;;
         9)
             if [ -f "$CFG" ]; then
@@ -1574,7 +1574,7 @@ service_management() {
                 systemctl disable "$SVC" 2>/dev/null
                 rm -f "$CFG" "$SYSTEMD_DIR/${SVC}.service"
                 systemctl daemon-reload
-                echo -e "${GREEN}âœ“ Deleted${NC}"; sleep 1
+                echo -e "${GREEN}[OK] Deleted${NC}"; sleep 1
             fi
             settings_menu ;;
         0) settings_menu ;;
@@ -1625,14 +1625,14 @@ update_binary() {
         echo -e "${YELLOW}Updating dashboard assets...${NC}"
         rm -rf "/var/lib/picotun/dashboard"
         install_dashboard_assets
-        echo -e "${GREEN}âœ“ Dashboard updated${NC}"
+        echo -e "${GREEN}[OK] Dashboard updated${NC}"
     fi
 
     # Restart services if running
     for svc in picotun-server picotun-client; do
         if systemctl is-active "$svc" &>/dev/null; then
             systemctl restart "$svc"
-            echo -e "${GREEN}âœ“ $svc restarted${NC}"
+            echo -e "${GREEN}[OK] $svc restarted${NC}"
         fi
     done
 
@@ -1645,9 +1645,9 @@ update_binary() {
 
 uninstall() {
     show_banner
-    echo -e "${RED}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${RED}${NC}"
     echo -e "${RED}         UNINSTALL PICOTUN${NC}"
-    echo -e "${RED}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${NC}"
+    echo -e "${RED}${NC}"
     echo ""
     echo -e "${YELLOW}This will remove:${NC}"
     echo "  - PicoTun binary"
@@ -1671,7 +1671,7 @@ uninstall() {
     sysctl -p > /dev/null 2>&1
     systemctl daemon-reload
 
-    echo -e "${GREEN}âœ“ PicoTun uninstalled${NC}"
+    echo -e "${GREEN}[OK] PicoTun uninstalled${NC}"
     exit 0
 }
 
