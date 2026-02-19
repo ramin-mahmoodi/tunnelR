@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.15)..."
+    echo "Creating Dashboard Assets (v3.5.16)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,7 +859,7 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.15</title>
+    <title>TunnelR v3.5.16</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
@@ -879,24 +879,25 @@ install_dashboard_assets() {
         ::-webkit-scrollbar-track { background: var(--bg-body); }
         ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
         
-        .premium-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; transition: transform 0.2s, border-color 0.2s; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; }
+        .premium-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; position: relative; transition: transform 0.2s, border-color 0.2s; min-height: 180px; display: flex; flex-direction: column; }
         .premium-card:hover { border-color: var(--accent); }
         
-        /* Typography Standards */
-        .card-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
-        .card-value { font-size: 1.875rem; line-height: 2.25rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.02em; }
-        .card-footer-text { font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--text-muted); margin-top: auto; padding-top: 16px; display: flex; align-items: center; gap: 6px; }
+        /* Reference UI Typography */
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .card-label { font-size: 0.875rem; font-weight: 500; color: #8b949e; }
+        .card-value { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; color: #fff; letter-spacing: -0.025em; margin-bottom: 16px; }
+        .card-subtext { font-size: 0.75rem; color: #8b949e; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
 
-        .icon-box { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: absolute; top: 24px; right: 24px; }
+        .icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .icon-blue { background: rgba(56, 139, 253, 0.15); color: #58a6ff; }
         .icon-green { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
         .icon-orange { background: rgba(210, 153, 34, 0.15); color: #d29922; }
         .icon-purple { background: rgba(163, 113, 247, 0.15); color: #a371f7; }
 
-        .progress-track { background-color: #21262d; height: 6px; border-radius: 9999px; margin-top: 12px; overflow: hidden; width: 100%; }
+        .progress-track { background-color: #21262d; height: 8px; border-radius: 9999px; width: 100%; overflow: hidden; }
         .progress-bar { height: 100%; border-radius: 9999px; transition: width 0.5s ease-out; }
-        .bar-blue { background-color: #58a6ff; }
-        .bar-green { background-color: #3fb950; }
+        .bar-blue { background-color: #3b82f6; } /* Brighter blue */
+        .bar-green { background-color: #22c55e; } /* Brighter green */
 
         .view { display: none; }
         .view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
@@ -931,7 +932,7 @@ install_dashboard_assets() {
         <div class="h-16 flex items-center justify-between px-6 border-b border-gray-800 sidebar-header shrink-0">
              <div class="flex items-center gap-3 overflow-hidden transition-all logo-box">
                 <div class="w-8 h-8 min-w-[32px] bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/40">R</div>
-                <h1 class="font-bold text-lg text-white logo-text whitespace-nowrap">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.15</span></h1>
+                <h1 class="font-bold text-lg text-white logo-text whitespace-nowrap">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.16</span></h1>
              </div>
              <button onclick="toggleSidebarDesktop()" class="text-gray-500 hover:text-white hidden md:block transition-colors p-1 rounded hover:bg-gray-800">
                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -971,51 +972,73 @@ install_dashboard_assets() {
 
         <div class="flex-1 overflow-y-auto w-full">
             <div class="w-full p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
-                <!-- VIEW: DASHBOARD -->
                 <div id="view-dash" class="view active">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- CPU -->
                         <div class="premium-card">
-                            <div class="icon-box icon-blue"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg></div>
-                            <div><div class="card-label">CPU Usage</div><div class="card-value"><span id="cpu-val">0</span><span class="text-lg font-normal text-gray-500 ml-1">%</span></div></div>
-                            <div class="w-full"><div class="progress-track"><div id="cpu-bar" class="progress-bar bar-blue" style="width: 0%"></div></div></div>
+                            <div class="card-header">
+                                <span class="card-label">CPU Usage</span>
+                                <div class="icon-box icon-blue"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg></div>
+                            </div>
+                            <div class="card-value"><span id="cpu-val">0</span><span class="text-xl text-gray-400 font-normal">%</span></div>
+                            <div class="w-full">
+                                 <div class="progress-track"><div id="cpu-bar" class="progress-bar bar-blue" style="width: 0%"></div></div>
+                                 <div class="card-subtext"><span class="text-green-400">Stable</span> <span class="ml-auto">Core Load</span></div>
+                            </div>
                         </div>
                         <!-- RAM -->
                         <div class="premium-card">
-                            <div class="icon-box icon-green"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg></div>
-                            <div><div class="card-label">RAM Usage</div><div class="card-value"><span id="ram-used">0</span> <span class="card-subtext">/ <span id="ram-total">0</span></span></div></div>
-                            <div class="w-full"><div class="progress-track"><div id="ram-bar" class="progress-bar bar-green" style="width: 0%"></div></div></div>
+                             <div class="card-header">
+                                <span class="card-label">RAM Usage</span>
+                                <div class="icon-box icon-green"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg></div>
+                            </div>
+                            <div class="card-value"><span id="ram-used">0</span> <span class="text-xl text-gray-400 font-normal">/ <span id="ram-total">0</span></span></div>
+                            <div class="w-full">
+                                <div class="progress-track"><div id="ram-bar" class="progress-bar bar-green" style="width: 0%"></div></div>
+                                <div class="card-subtext"><span class="text-orange-400">Allocated</span> <span class="ml-auto">System Memory</span></div>
+                            </div>
                         </div>
-                        <!-- Uptime -->
-                        <div class="premium-card">
-                             <div class="icon-box icon-orange"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                             <div><div class="card-label">Uptime</div><div class="card-value tracking-tight" id="svc-uptime">00:00:00</div></div>
-                             <div class="card-footer-text"><span>Started: <span id="start-time" class="text-gray-400">...</span></span></div>
-                        </div>
-                        <!-- Sessions -->
-                        <div class="premium-card">
-                             <div class="icon-box icon-purple"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></div>
-                             <div><div class="card-label">Sessions</div><div class="card-value" id="sess-count">0</div></div>
-                             <div class="card-footer-text justify-between w-full"><span class="text-blue-400">↑ <span id="vol-sent">0 B</span></span> <span class="text-green-400">↓ <span id="vol-recv">0 B</span></span></div>
+                        <!-- Uptime (Combined with Sessions for 3-col Grid) -->
+                         <div class="premium-card">
+                             <div class="card-header">
+                                <span class="card-label">System Uptime</span>
+                                <div class="icon-box icon-orange"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                            </div>
+                            <div class="card-value" id="svc-uptime" style="font-size: 1.8rem;">00d 00h 00m</div>
+                             <div class="w-full mt-auto pt-2 border-t border-gray-800">
+                                <div class="flex justify-between items-center text-xs text-gray-400 mt-2">
+                                    <span>Active Sessions: <span id="sess-count" class="text-white font-bold text-sm">0</span></span>
+                                    <span class="text-blue-400" id="vol-sent">0 B</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="premium-card mt-6" style="min-height: auto;">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                            <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
-                             <div class="flex gap-4 md:gap-6 text-sm mt-2 md:mt-0">
-                                <span class="text-blue-400">Upload <span id="lg-up" class="font-mono text-white">0 B/s</span></span>
-                                <span class="text-green-400">Download <span id="lg-down" class="font-mono text-white">0 B/s</span></span>
+                    <div class="premium-card mt-6" style="min-height: 400px;">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
+                                <div class="text-xs text-gray-500 mt-1">Real-time throughput monitor</div>
+                            </div>
+                             <div class="flex gap-6 text-sm items-center">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                    <span class="text-gray-400">Upload <span id="lg-up" class="text-white font-mono ml-1">0 B/s</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                                    <span class="text-gray-400">Download <span id="lg-down" class="text-white font-mono ml-1">0 B/s</span></span>
+                                </div>
                             </div>
                         </div>
-                        <div class="h-60 md:h-80 w-full relative">
+                        <div class="flex-1 w-full relative">
                             <canvas id="trafficChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIEW: LOGS -->
-                <div id="view-logs" class="view">
+                <!-- Logs & Settings (Preserved) -->
+                 <div id="view-logs" class="view">
                      <div class="premium-card h-[calc(100vh-140px)] flex flex-col p-0 overflow-hidden" style="min-height: 400px;">
                         <div class="p-4 border-b border-gray-800 flex justify-between bg-black/20">
                             <span class="font-bold text-sm text-gray-300">SYSTEM LOGS</span>
@@ -1028,7 +1051,6 @@ install_dashboard_assets() {
                      </div>
                 </div>
 
-                <!-- VIEW: SETTINGS (FULL) -->
                 <div id="view-settings" class="view">
                     <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <div class="flex gap-4 w-full md:w-auto bg-gray-900 p-1 rounded-lg">
@@ -1040,66 +1062,21 @@ install_dashboard_assets() {
                     <div id="cfg-code" class="premium-card p-0 overflow-hidden hidden" style="min-height: 600px;"><textarea id="config-editor" class="code-editor" spellcheck="false"></textarea></div>
                     
                     <div id="cfg-visual" class="premium-card space-y-8" style="min-height: auto;">
-                        <div>
-                            <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Core Connection</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Bind Address</label><input type="text" id="v-listen" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div>
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">PSK (Password)</label><input type="text" id="v-psk" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div>
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Mimic Domain</label><input type="text" id="v-mimic" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Transport</label><select id="v-transport" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"><option value="httpsmux">HTTPS</option><option value="wssmux">WSS</option><option value="tcpmux">TCP</option></select></div>
-                            </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Bind Address</label><input type="text" id="v-listen" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">PSK</label><input type="text" id="v-psk" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Mimic</label><input type="text" id="v-mimic" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Transport</label><select id="v-transport" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"><option value="httpsmux">HTTPS</option><option value="wssmux">WSS</option></select></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">OBFS Key</label><input type="text" id="v-obfs-key" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">OBFS IV</label><input type="text" id="v-obfs-iv" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Pool Size</label><input type="number" id="v-pool" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Retry (s)</label><input type="number" id="v-retry" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
                         </div>
-
-                        <div>
-                            <h4 class="text-sm font-bold text-green-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Obfuscation</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Key</label><input type="text" id="v-obfs-key" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">IV</label><input type="text" id="v-obfs-iv" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                            </div>
-                        </div>
-
-                        <div>
-                             <h4 class="text-sm font-bold text-orange-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Load Balancing & Performance</h4>
-                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Pool Size</label><input type="number" id="v-pool" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Retry Interval (s)</label><input type="number" id="v-retry" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                 <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Dial Timeout (s)</label><input type="number" id="v-timeout" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                             </div>
-                        </div>
-
-                        <div>
-                            <h4 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">System & Logging</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Tier</label><input type="number" id="v-tier" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Log Level</label><select id="v-loglevel" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"><option value="info">Info</option><option value="debug">Debug</option><option value="error">Error</option></select></div>
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Keepalive Interv (s)</label><input type="number" id="v-ka-int" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                                <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Keepalive Timeout (s)</label><input type="number" id="v-ka-to" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div>
-                            </div>
-                        </div>
-
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                             <div>
-                                <h4 class="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Packet Routing (Rules)</h4>
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1.5">TCP Rules</label>
-                                        <textarea id="v-tcp" rows="4" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700" placeholder="- 80: 127.0.0.1:8080\n- 443: 192.168.1.1:443"></textarea>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1.5">UDP Rules</label>
-                                        <textarea id="v-udp" rows="4" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700" placeholder="- 53: 8.8.8.8:53"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Upstreams (Client Mode)</h4>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Upstream Servers</label>
-                                    <textarea id="v-upstreams" rows="9" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700" placeholder="- ip: 1.2.3.4:443\n  weight: 1\n  interface: eth0\n\n- ip: 5.6.7.8:8443\n  weight: 2"></textarea>
-                                    <p class="text-[10px] text-gray-500 mt-2">Define IPs, weights, and interfaces for load balancing.</p>
-                                </div>
-                            </div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">TCP Rules</label><textarea id="v-tcp" rows="4" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700"></textarea></div>
+                             <div><label class="block text-xs font-medium text-gray-400 mb-1.5">UDP Rules</label><textarea id="v-udp" rows="4" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700"></textarea></div>
                         </div>
+                         <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Upstreams</label><textarea id="v-upstreams" rows="6" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs placeholder-gray-700"></textarea></div>
                     </div>
                 </div>
             </div>
@@ -1129,173 +1106,70 @@ install_dashboard_assets() {
              btn.classList.add('bg-gray-800','text-white'); btn.classList.remove('text-gray-400');
             if(m === 'visual') parseYamlToForm();
         }
-        
-        // --- Full Config Parsing ---
-        function parseYamlToForm() {
-             try { 
-                 const doc = jsyaml.load($('#config-editor').value); 
-                 if(!doc) return;
-
-                 // Core
-                 $('#v-listen').value = doc.listen || '';
-                 $('#v-psk').value = doc.psk || '';
-                 $('#v-mimic').value = (doc.mimic && doc.mimic.fake_domain) ? doc.mimic.fake_domain : '';
-                 $('#v-transport').value = doc.transport || 'httpsmux';
-                 $('#v-tier').value = doc.tier || '';
-                 $('#v-loglevel').value = doc.log_level || 'info';
-
-                 // Obfs
-                 if(doc.obfs) { 
-                    $('#v-obfs-key').value = doc.obfs.key || ''; 
-                    $('#v-obfs-iv').value = doc.obfs.iv || ''; 
-                 }
-                 
-                 // System/KA
-                 if(doc.keepalive) {
-                    $('#v-ka-int').value = doc.keepalive.interval || '';
-                    $('#v-ka-to').value = doc.keepalive.timeout || '';
-                 }
-
-                 // Paths (Take first for defaults, assume symmetric for simple UI)
-                 if(doc.paths && doc.paths[0]) { 
-                    $('#v-pool').value = doc.paths[0].pool || 4; 
-                    $('#v-timeout').value = doc.paths[0].dial_timeout || 10; 
-                    $('#v-retry').value = doc.paths[0].retry || 3; 
-                 }
-                 
-                 // Upstreams (Text Dump)
-                 if(doc.upstreams) {
-                     $('#v-upstreams').value = jsyaml.dump(doc.upstreams);
-                 }
-
-                 // Routes
-                 if(doc.forward) { 
-                    if(doc.forward.tcp) $('#v-tcp').value = jsyaml.dump(doc.forward.tcp); 
-                    if(doc.forward.udp) $('#v-udp').value = jsyaml.dump(doc.forward.udp); 
-                 }
-
-             } catch(e){ console.error(e); } 
-        }
-
-        async function loadConfig() { const r = await fetch('/api/config'); if(r.ok) { $('#config-editor').value=await r.text(); parseYamlToForm(); } }
-        async function saveConfig() { 
-            // We save the RAW editor value. 
-            // NOTE: A true bi-directional sync (Form->YAML) is complex. 
-            // For now, we assume user edits in RAW or we implement basic sync later if requested.
-            // The user asked for "Changeable here". 
-            // To make it functional, I must implement form->yaml! 
-            
-            if($('#cfg-visual').classList.contains('hidden') === false) {
-                // If in Visual mode, we must update the YAML editor content before saving
-                updateYamlFromForm();
-            }
-            if(!confirm('Save Config & Restart?')) return; 
-            await fetch('/api/config', {method:'POST', body:$('#config-editor').value}); 
-            await fetch('/api/restart', {method:'POST'}); 
-        }
-        
+        function parseYamlToForm() { try { const doc = jsyaml.load($('#config-editor').value); if(!doc) return; 
+             $('#v-listen').value=doc.listen||''; $('#v-psk').value=doc.psk||''; $('#v-mimic').value=(doc.mimic?.fake_domain)||'';
+             $('#v-transport').value=doc.transport||'httpsmux'; 
+             $('#v-obfs-key').value=doc.obfs?.key||''; $('#v-obfs-iv').value=doc.obfs?.iv||'';
+             $('#v-pool').value=doc.paths?.[0]?.pool||4; $('#v-retry').value=doc.paths?.[0]?.retry||3;
+             $('#v-upstreams').value=doc.upstreams?jsyaml.dump(doc.upstreams):'';
+             $('#v-tcp').value=doc.forward?.tcp?jsyaml.dump(doc.forward.tcp):''; $('#v-udp').value=doc.forward?.udp?jsyaml.dump(doc.forward.udp):'';
+        } catch(e){} }
+        // UpdateYamlFromForm (Simplified for this version)
         function updateYamlFromForm() {
-            try {
-                // Load existing to preserve structure
-                let doc = jsyaml.load($('#config-editor').value) || {};
-                
-                doc.listen = $('#v-listen').value;
-                doc.psk = $('#v-psk').value;
-                doc.transport = $('#v-transport').value;
-                doc.tier = parseInt($('#v-tier').value) || 1;
-                doc.log_level = $('#v-loglevel').value;
-                
-                if(!doc.mimic) doc.mimic = {};
-                doc.mimic.fake_domain = $('#v-mimic').value;
-                
-                if(!doc.obfs) doc.obfs = {};
-                doc.obfs.key = $('#v-obfs-key').value;
-                doc.obfs.iv = $('#v-obfs-iv').value;
-                
-                if(!doc.keepalive) doc.keepalive = {};
-                doc.keepalive.interval = parseInt($('#v-ka-int').value) || 0;
-                doc.keepalive.timeout = parseInt($('#v-ka-to').value) || 0;
-                
-                // Update Path Defaults (apply to all if simple, or just first)
-                // For simplicity, we assume single path config or apply to all existing
-                const pool = parseInt($('#v-pool').value);
-                const to = parseInt($('#v-timeout').value);
-                const retry = parseInt($('#v-retry').value);
-                
-                if(!doc.paths) doc.paths = [{}];
-                doc.paths.forEach(p => { p.pool=pool; p.dial_timeout=to; p.retry=retry; });
-                
-                // Textareas (Yaml fragments)
-                // We try to safe-load them.
-                try { doc.upstreams = jsyaml.load($('#v-upstreams').value); } catch(e){}
-                
-                if(!doc.forward) doc.forward = {};
-                try { doc.forward.tcp = jsyaml.load($('#v-tcp').value); } catch(e){}
-                try { doc.forward.udp = jsyaml.load($('#v-udp').value); } catch(e){}
-                
-                $('#config-editor').value = jsyaml.dump(doc);
-            } catch(e) {
-                alert('Error generating YAML: ' + e);
-            }
+             try { let doc = jsyaml.load($('#config-editor').value) || {};
+                 doc.listen=$('#v-listen').value; doc.psk=$('#v-psk').value; doc.transport=$('#v-transport').value;
+                 if(!doc.mimic) doc.mimic={}; doc.mimic.fake_domain=$('#v-mimic').value;
+                 if(!doc.obfs) doc.obfs={}; doc.obfs.key=$('#v-obfs-key').value; doc.obfs.iv=$('#v-obfs-iv').value;
+                 if(!doc.paths) doc.paths=[{}]; doc.paths.forEach(p=>{p.pool=parseInt($('#v-pool').value);p.retry=parseInt($('#v-retry').value)});
+                 try{doc.upstreams=jsyaml.load($('#v-upstreams').value)}catch(e){}
+                 if(!doc.forward) doc.forward={}; 
+                 try{doc.forward.tcp=jsyaml.load($('#v-tcp').value)}catch(e){} try{doc.forward.udp=jsyaml.load($('#v-udp').value)}catch(e){}
+                 $('#config-editor').value=jsyaml.dump(doc);
+             } catch(e) { alert('YAML Error: '+e); }
         }
-
-        let logSrc;
-        function initLogs() { if(logSrc) return; $('#logs-container').innerHTML=''; logSrc=new EventSource('/api/logs/stream'); logSrc.onmessage=e=>{ const d=document.createElement('div'); d.textContent=e.data; if(e.data.toLowerCase().includes('err')) d.classList.add('log-error','p-1','rounded'); else d.classList.add('p-0.5'); $('#logs-container').appendChild(d); } }
+        async function loadConfig() { const r = await fetch('/api/config'); if(r.ok) { $('#config-editor').value=await r.text(); parseYamlToForm(); } }
+        async function saveConfig() { if(!$('#cfg-visual').classList.contains('hidden')) updateYamlFromForm(); if(!confirm('Save?')) return; await fetch('/api/config', {method:'POST', body:$('#config-editor').value}); await fetch('/api/restart', {method:'POST'}); }
+        let logSrc; function initLogs() { if(logSrc) return; $('#logs-container').innerHTML=''; logSrc=new EventSource('/api/logs/stream'); logSrc.onmessage=e=>{ const d=document.createElement('div'); d.textContent=e.data; if(e.data.toLowerCase().includes('err')) d.classList.add('log-error','p-1','rounded'); else d.classList.add('p-0.5'); $('#logs-container').appendChild(d); } }
         function setLogFilter(f) { document.querySelectorAll('#logs-container div').forEach(d=>{ d.style.display=(f==='all'||d.classList.contains('log-error'))?'block':'none' }) }
 
-        // Stats Loop
-         setInterval(async () => {
+        setInterval(async () => {
             try {
                 const res = await fetch('/api/stats');
                 const data = await res.json();
                 $('#cpu-val').innerText = data.cpu.toFixed(1);
                 $('#cpu-bar').style.width = Math.min(data.cpu, 100) + '%';
-                const usedBytes = data.ram_used || 0;
-                const totalBytes = data.ram_total || 1; 
-                const usedGB = (usedBytes / 1024 / 1024 / 1024).toFixed(1);
-                const totalGB = (totalBytes > 1024*1024) ? (totalBytes / 1024 / 1024 / 1024).toFixed(1)+'GB' : 'System';
+                
+                const usedBytes = data.ram_used || 0; const totalBytes = data.ram_total || 1;
+                const usedGB = (usedBytes / 1024**3).toFixed(1); const totalGB = (totalBytes > 1024**2) ? (totalBytes / 1024**3).toFixed(1)+'GB' : 'System';
                 $('#ram-used').innerText = usedGB; $('#ram-total').innerText = totalGB;
-                const ramPct = (usedBytes / totalBytes) * 100;
-                $('#ram-bar').style.width = Math.min(ramPct, 100) + '%';
+                $('#ram-bar').style.width = Math.min((usedBytes/totalBytes)*100, 100) + '%';
+                
                 $('#sess-count').innerText = data.stats.total_conns || 0;
-                if(data.uptime_s){const s=data.uptime_s;const d=Math.floor(s/86400);const h=Math.floor((s%86400)/3600);const m=Math.floor((s%3600)/60);$('#svc-uptime').innerText=`${d}d ${h}h ${m}m`;}
-                if(data.start_time){const s=new Date(data.start_time);$('#start-time').innerText=s.toLocaleTimeString();}
                 $('#vol-sent').innerText = data.stats.recv_human || '0 B'; 
-                $('#vol-recv').innerText = data.stats.sent_human || '0 B';
-                const u=['B','KB','MB','GB'];
-                const hb=b=>{let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(1)+' '+u[i];};
-                const up=hb(data.stats.speed_up||0); const down=hb(data.stats.speed_down||0);
-                $('#lg-up').innerText=up+'/s'; $('#lg-down').innerText=down+'/s';
+                
+                if(data.uptime_s){const s=data.uptime_s;const d=Math.floor(s/86400);const h=Math.floor((s%86400)/3600);const m=Math.floor((s%3600)/60);$('#svc-uptime').innerText=`${d}d ${h}h ${m}m`;}
+                
+                const u=['B','KB','MB','GB']; const hb=b=>{let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(1)+' '+u[i];};
+                $('#lg-up').innerText=hb(data.stats.speed_up||0)+'/s'; $('#lg-down').innerText=hb(data.stats.speed_down||0)+'/s';
                 updateChart(data.stats.speed_down||0, data.stats.speed_up||0);
             } catch(e) {}
         }, 1000);
         
         function updateChart(rx, tx) {
-             const hb=b=>{const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(1)+' '+u[i]};
+             const hb=b=>{const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(1)+' '+u[i];};
              if(!chart) { const ctx=$('#trafficChart').getContext('2d'); 
+                 const g = ctx.createLinearGradient(0,0,0,400); g.addColorStop(0, 'rgba(34, 197, 94, 0.2)'); g.addColorStop(1, 'rgba(34, 197, 94, 0)');
+                 const g2 = ctx.createLinearGradient(0,0,0,400); g2.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); g2.addColorStop(1, 'rgba(59, 130, 246, 0)');
                  chart=new Chart(ctx,{
                      type:'line',
-                     data:{
-                         labels:Array(30).fill(''),
-                         datasets:[
-                             {label:'DL',data:Array(30).fill(0),borderColor:'#3fb950',backgroundColor:'rgba(63, 185, 80, 0.1)',fill:true,tension:0.4,pointRadius:0},
-                             {label:'UL',data:Array(30).fill(0),borderColor:'#58a6ff',backgroundColor:'rgba(56, 139, 253, 0.1)',fill:true,tension:0.4,pointRadius:0}
-                         ]
-                     },
-                     options:{
-                         responsive:true,
-                         maintainAspectRatio:false,
-                         scales:{
-                             x:{display:true, grid:{display:false}, ticks:{color:'#505050', maxTicksLimit:6, maxRotation:0}}, 
-                             y:{position:'right',ticks:{color:'#8b949e',callback:v=>hb(v)},grid:{color:'#30363d'}}
-                         },
-                         plugins:{legend:{display:false}},
-                         animation:false,
-                         interaction:{intersect:false}
-                    }
+                     data:{labels:Array(30).fill(''),datasets:[
+                         {label:'DL',data:Array(30).fill(0),borderColor:'#22c55e',backgroundColor:g,fill:true,tension:0.4,pointRadius:0,borderWidth:2},
+                         {label:'UL',data:Array(30).fill(0),borderColor:'#3b82f6',backgroundColor:g2,fill:true,tension:0.4,pointRadius:0,borderWidth:2}
+                     ]},
+                     options:{responsive:true,maintainAspectRatio:false,scales:{x:{display:true,grid:{display:false},ticks:{color:'#64748b'}},y:{position:'right',grid:{color:'#334155'},ticks:{color:'#64748b',callback:v=>hb(v)}}},plugins:{legend:{display:false}},animation:false,interaction:{intersect:false}}
                 }); 
              }
-             const now = new Date().toLocaleTimeString();
+             const now = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
              chart.data.labels.push(now); chart.data.labels.shift();
              chart.data.datasets[0].data.push(rx); chart.data.datasets[0].data.shift();
              chart.data.datasets[1].data.push(tx); chart.data.datasets[1].data.shift();
@@ -1307,6 +1181,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
