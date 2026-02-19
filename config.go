@@ -216,7 +216,7 @@ func applyBaseDefaults(c *Config) {
 	}
 	transport := strings.ToLower(c.Transport)
 	if !c.Fragment.Enabled && (transport == "httpsmux" || transport == "wssmux") {
-		c.Fragment.Enabled = true
+		c.Fragment.Enabled = false // v3.6.6: Disabled to reduce overhead
 	}
 }
 
@@ -224,6 +224,9 @@ func applyProfile(c *Config) {
 	switch c.Profile {
 	case "aggressive":
 		// Aggressive = MAX SPEED: bigger buffers, zero delay, small padding
+		// v3.6.6: Force disable overhead
+		c.Fragment.Enabled = false
+		c.Obfuscation.Enabled = false
 		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 5 {
 			c.Smux.KeepAlive = 5
 		}
