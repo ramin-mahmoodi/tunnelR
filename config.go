@@ -254,6 +254,8 @@ func applyProfile(c *Config) {
 			c.Obfuscation.MaxPadding = 64
 		}
 		c.HTTPMimic.ChunkedEncoding = false
+		// v3.6.9: Disable Compression to save CPU at high speeds (>100Mbps)
+		c.Compression = "none"
 		for i := range c.Paths {
 			if c.Paths[i].ConnectionPool < 4 {
 				c.Paths[i].ConnectionPool = 4
