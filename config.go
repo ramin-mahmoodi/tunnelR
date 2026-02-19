@@ -193,6 +193,14 @@ func applyBaseDefaults(c *Config) {
 	}
 	// NOTE: EnableDecoy and EmbedFakeHeaders defaults are set in LoadConfig before Unmarshal
 
+	// ✅ Default Advanced TCP Settings (Fix for "Speed Drop" & "Disconnects")
+	if c.Advanced.TCPKeepAlive <= 0 {
+		c.Advanced.TCPKeepAlive = 15 // 15s keeps NAT/Firewalls open
+	}
+	if !c.Advanced.TCPNoDelay {
+		c.Advanced.TCPNoDelay = true // Disable Nagle's algo for lower latency
+	}
+
 	// TLS Fragment defaults
 	if c.Fragment.MinSize <= 0 {
 		c.Fragment.MinSize = 64
