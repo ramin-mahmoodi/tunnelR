@@ -216,7 +216,7 @@ func applyBaseDefaults(c *Config) {
 	}
 	transport := strings.ToLower(c.Transport)
 	if !c.Fragment.Enabled && (transport == "httpsmux" || transport == "wssmux") {
-		c.Fragment.Enabled = false // v3.6.6: Disabled to reduce overhead
+		c.Fragment.Enabled = true // v3.6.10: Restored (User request) // v3.6.6: Disabled to reduce overhead
 	}
 }
 
@@ -225,8 +225,8 @@ func applyProfile(c *Config) {
 	case "aggressive":
 		// Aggressive = MAX SPEED: bigger buffers, zero delay, small padding
 		// v3.6.6: Force disable overhead
-		c.Fragment.Enabled = false
-		c.Obfuscation.Enabled = false
+		c.Fragment.Enabled = true // v3.6.10: Restored (User request)
+		c.Obfuscation.Enabled = true // v3.6.10: Restored (User request)
 		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 5 {
 			c.Smux.KeepAlive = 5
 		}
@@ -255,7 +255,7 @@ func applyProfile(c *Config) {
 		}
 		c.HTTPMimic.ChunkedEncoding = false
 		// v3.6.9: Disable Compression to save CPU at high speeds (>100Mbps)
-		c.Compression = "none"
+		c.Compression = "snappy" // v3.6.10: Restored (User request)
 		for i := range c.Paths {
 			if c.Paths[i].ConnectionPool < 4 {
 				c.Paths[i].ConnectionPool = 4
