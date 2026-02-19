@@ -266,7 +266,6 @@ func applyProfile(c *Config) {
 				c.Paths[i].DialTimeout = 10
 			}
 		}
-	}
 
 	case "stable":
 		// Stable = CONSISTENCY over burst speed: smaller buffers to prevent bloat
