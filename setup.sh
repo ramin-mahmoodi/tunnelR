@@ -5,7 +5,7 @@
 # Setup Script (bash <(curl -s https://raw.githubusercontent.com/ramin-mahmoodi/tunnelR/main/setup.sh))
 # ===============================================================
 
-SCRIPT_VERSION="3.6.6"
+SCRIPT_VERSION="3.6.7"
 
 
 # Colors & Styling

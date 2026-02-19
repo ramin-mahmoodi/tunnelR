@@ -613,15 +613,38 @@ func (c *Client) bestPath() int {
 
 // setTCPOptions applies keep-alive and no-delay options to TCP connections.
 func (c *Client) setTCPOptions(conn net.Conn) {
+	// Try to set buffers on the underlying TCP connection
+	if tcp, ok := conn.(*net.TCPConn); ok {
+		tcp.SetKeepAlive(true)
+		tcp.SetKeepAlivePeriod(time.Duration(c.cfg.Advanced.TCPKeepAlive) * time.Second)
+		tcp.SetNoDelay(c.cfg.Advanced.TCPNoDelay)
+		if c.cfg.Advanced.TCPReadBuffer > 0 {
+			tcp.SetReadBuffer(c.cfg.Advanced.TCPReadBuffer)
+		}
+		if c.cfg.Advanced.TCPWriteBuffer > 0 {
+			tcp.SetWriteBuffer(c.cfg.Advanced.TCPWriteBuffer)
+		}
+		return
+	}
+
+	// Fallback for wrapped conns or interfaces
 	type hasTCP interface {
 		SetKeepAlive(bool) error
 		SetKeepAlivePeriod(time.Duration) error
 		SetNoDelay(bool) error
+		SetReadBuffer(int) error
+		SetWriteBuffer(int) error
 	}
 	if tc, ok := conn.(hasTCP); ok {
 		tc.SetKeepAlive(true)
 		tc.SetKeepAlivePeriod(time.Duration(c.cfg.Advanced.TCPKeepAlive) * time.Second)
 		tc.SetNoDelay(c.cfg.Advanced.TCPNoDelay)
+		if c.cfg.Advanced.TCPReadBuffer > 0 {
+			tc.SetReadBuffer(c.cfg.Advanced.TCPReadBuffer)
+		}
+		if c.cfg.Advanced.TCPWriteBuffer > 0 {
+			tc.SetWriteBuffer(c.cfg.Advanced.TCPWriteBuffer)
+		}
 	}
 }
 

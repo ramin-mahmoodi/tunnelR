@@ -150,10 +150,10 @@ func applyBaseDefaults(c *Config) {
 		c.Smux.KeepAlive = 10 // 10s — safe for high-latency links
 	}
 	if c.Smux.MaxRecv <= 0 {
-		c.Smux.MaxRecv = 4194304 // 4MB
+		c.Smux.MaxRecv = 8388608 // 4MB
 	}
 	if c.Smux.MaxStream <= 0 {
-		c.Smux.MaxStream = 4194304 // 4MB
+		c.Smux.MaxStream = 8388608 // 4MB
 	}
 	if c.Smux.FrameSize <= 0 {
 		c.Smux.FrameSize = 32768 // 32KB
@@ -233,11 +233,20 @@ func applyProfile(c *Config) {
 		if c.Smux.FrameSize < 32768 {
 			c.Smux.FrameSize = 32768
 		}
-		if c.Smux.MaxRecv < 4194304 {
-			c.Smux.MaxRecv = 4194304
+		if c.Smux.MaxRecv < 8388608 {
+			c.Smux.MaxRecv = 8388608
 		}
-		if c.Smux.MaxStream < 4194304 {
-			c.Smux.MaxStream = 4194304
+		if c.Smux.MaxStream < 8388608 {
+			c.Smux.MaxStream = 8388608
+		}
+		c.Smux.MaxStream = 8388608
+		}
+		// v3.6.7: BDP Tuning for 400Mbps+ @ 120ms (Target ~6MB, setting 8MB safety)
+		if c.Advanced.TCPReadBuffer < 8388608 {
+			c.Advanced.TCPReadBuffer = 8388608
+		}
+		if c.Advanced.TCPWriteBuffer < 8388608 {
+			c.Advanced.TCPWriteBuffer = 8388608
 		}
 		// NO delay — speed is king
 		c.Obfuscation.MinDelayMS = 0
