@@ -82,55 +82,49 @@ func (c *EncryptedConn) Write(data []byte) (int, error) {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
 
-	payload := data
-
-	// ① Padding BEFORE encryption (Dagger-style: sizes are hidden)
+	// 1. Get buffer for PADDED PLAINTEXT (Src)
+	srcBufPtr := globalBufPool.Get().(*[]byte)
+	defer globalBufPool.Put(srcBufPtr)
+	
+	var payload []byte
+	
+	// ① Padding BEFORE encryption (Zero-Alloc)
 	if c.obfs != nil && c.obfs.Enabled {
-		payload = addPadding(data, c.obfs)
+		// Use srcBuf as scratch space for padding
+		// Format: [2B len][data][padding]
+		payload = addPaddingBuf(data, c.obfs, *srcBufPtr)
+	} else {
+		payload = data
 	}
 
 	// ② Encrypt
 	if c.gcm != nil {
-		nonce := make([]byte, c.gcm.NonceSize()) // 12 bytes
+		nonce := make([]byte, c.gcm.NonceSize())
 		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 			return 0, fmt.Errorf("nonce: %w", err)
 		}
 
-		// Get buffer from pool
-		bufPtr := globalBufPool.Get().(*[]byte)
-		defer globalBufPool.Put(bufPtr)
-		buf := *bufPtr
+		// 2. Get buffer for CIPHERTEXT (Dst)
+		dstBufPtr := globalBufPool.Get().(*[]byte)
+		defer globalBufPool.Put(dstBufPtr)
+		buf := *dstBufPtr
 
-		// Seal appends to dst; reusing buf as scratch space
-		// Format: [4B len][12B nonce][ciphertext + tag]
-		// We write directly into the large buffer to avoid extra allocations
-
-		// 1. Reserve 4 bytes for length
-		// 2. Copy nonce
+		// Layout: [4B len][12B nonce][ciphertext+tag]
 		copy(buf[4:], nonce)
-
-		// 3. Encrypt payload and append to buf after nonce
-		// Seal(dst, nonce, plaintext, additionalData)
-		// We use buf[:4+12] as 'dst' but we need to slice it carefully so append works from there
+		
+		// Encrypt payload -> append to buf
 		encrypted := c.gcm.Seal(buf[4+len(nonce):4+len(nonce)], nonce, payload, nil)
-
-		// Total packet length = nonce + ciphertext (which includes tag)
-		// Note: 'encrypted' slice is now backing the same array as 'buf'
 		pktLen := len(nonce) + len(encrypted)
 
-		// Fill in length header
 		binary.BigEndian.PutUint32(buf[:4], uint32(pktLen))
-
-		// Write the slice of the buffer that we used
-		totalSize := 4 + pktLen
-		if _, err := c.conn.Write(buf[:totalSize]); err != nil {
+		if _, err := c.conn.Write(buf[:4+pktLen]); err != nil {
 			return 0, err
 		}
 	} else {
-		// No encryption — still length-framed for consistency
-		bufPtr := globalBufPool.Get().(*[]byte)
-		defer globalBufPool.Put(bufPtr)
-		buf := *bufPtr
+		// No encryption
+		dstBufPtr := globalBufPool.Get().(*[]byte)
+		defer globalBufPool.Put(dstBufPtr)
+		buf := *dstBufPtr
 
 		pktLen := len(payload)
 		binary.BigEndian.PutUint32(buf[:4], uint32(pktLen))
@@ -141,9 +135,7 @@ func (c *EncryptedConn) Write(data []byte) (int, error) {
 		}
 	}
 
-	// ③ Traffic timing jitter — ONLY for large data packets (>128 bytes)
-	//    NEVER delay smux keepalive/control frames (they're small)
-	//    This prevents delay from killing smux session keepalive
+	// ③ Jitter
 	if c.obfs != nil && c.obfs.Enabled && c.obfs.MaxDelayMS > 0 && len(data) > 128 {
 		obfsDelay(c.obfs)
 	}
@@ -157,19 +149,17 @@ func (c *EncryptedConn) Read(p []byte) (int, error) {
 	c.readMu.Lock()
 	defer c.readMu.Unlock()
 
-	// Return leftover from previous read first (important for smux)
 	if len(c.readBuf) > 0 {
 		n := copy(p, c.readBuf)
 		c.readBuf = c.readBuf[n:]
 		return n, nil
 	}
 
-	// Read 4-byte length header
-	header := make([]byte, 4)
-	if _, err := io.ReadFull(c.conn, header); err != nil {
+	var header [4]byte
+	if _, err := io.ReadFull(c.conn, header[:]); err != nil {
 		return 0, err
 	}
-	pktLen := binary.BigEndian.Uint32(header)
+	pktLen := binary.BigEndian.Uint32(header[:])
 	if pktLen == 0 || pktLen > 2<<20 { // 2MB sanity — prevents memory exhaustion from spoofed headers
 		return 0, fmt.Errorf("invalid packet length: %d", pktLen)
 	}
@@ -244,20 +234,31 @@ var decoyPatterns = []string{
 	"Cache-Control: no-cache",
 }
 
-func addPadding(data []byte, obfs *ObfsConfig) []byte {
+// addPaddingBuf writes padded data into the provided buffer to avoid allocation.
+func addPaddingBuf(data []byte, obfs *ObfsConfig, buf []byte) []byte {
 	padLen := obfs.MinPadding
 	diff := obfs.MaxPadding - obfs.MinPadding
 	if diff > 0 {
 		padLen += secureRandInt(diff)
 	}
-	out := make([]byte, 2+len(data)+padLen)
+	
+	totalLen := 2 + len(data) + padLen
+	if totalLen > len(buf) {
+		// Fallback if pool buffer is too small (rare)
+		out := make([]byte, totalLen)
+		binary.BigEndian.PutUint16(out[:2], uint16(len(data)))
+		copy(out[2:], data)
+		return out // Padding is zeroed by make
+	}
+
+	out := buf[:totalLen]
 	binary.BigEndian.PutUint16(out[:2], uint16(len(data)))
 	copy(out[2:], data)
+	
 	if padLen > 0 {
 		paddingArea := out[2+len(data):]
 		rand.Read(paddingArea)
-
-		// Inject a decoy HTTP string if padding is large enough
+		// Decoy injection
 		if padLen > 12 {
 			decoyStr := decoyPatterns[secureRandInt(len(decoyPatterns))]
 			if len(decoyStr) < padLen {
