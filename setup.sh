@@ -851,7 +851,7 @@ install_dashboard_assets() {
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.20)..."
+    echo "Creating Dashboard Assets (v3.5.21)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 <!DOCTYPE html>
@@ -859,7 +859,7 @@ install_dashboard_assets() {
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.20</title>
+    <title>TunnelR v3.5.21</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
@@ -932,12 +932,12 @@ install_dashboard_assets() {
         <div class="h-16 flex items-center justify-between px-6 border-b border-gray-800 sidebar-header shrink-0">
              <div class="flex items-center gap-3 overflow-hidden transition-all logo-box">
                 <div class="w-8 h-8 min-w-[32px] bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-900/40">R</div>
-                <h1 class="font-bold text-lg text-white logo-text whitespace-nowrap">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.20</span></h1>
+                <h1 class="font-bold text-lg text-white logo-text whitespace-nowrap">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.21</span></h1>
              </div>
              <button onclick="toggleSidebarDesktop()" class="text-gray-500 hover:text-white hidden md:block transition-colors p-1 rounded hover:bg-gray-800"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
         </div>
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <button onclick="setView('dash')" id="nav-dash" class="nav-btn active"><svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> <span class="nav-text">Dashboard</span></button>
+            <button onclick="setView('dash')" id="nav-dash" class="nav-btn active"><svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> <span class="nav-text">Dashboard</span></button>
             <button onclick="setView('logs')" id="nav-logs" class="nav-btn"><svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg> <span class="nav-text">Live Logs</span></button>
             <button onclick="setView('settings')" id="nav-settings" class="nav-btn"><svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> <span class="nav-text">Editor</span></button>
         </nav>
@@ -979,11 +979,11 @@ install_dashboard_assets() {
                              <div><div class="card-label">Uptime</div><div class="card-value" id="svc-uptime">0<span class="unit-span">d</span> 0<span class="unit-span">h</span> 0<span class="unit-span">m</span></div></div>
                              <div class="card-footer-text"><span>Started: <span id="start-time" class="text-gray-400">...</span></span></div>
                         </div>
-                        <!-- Sessions -->
+                        <!-- Sessions (FIXED: Now showing ACTIVE connections) -->
                         <div class="premium-card">
                              <div class="icon-box icon-purple"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg></div>
                              <div><div class="card-label">Sessions</div><div class="card-value" id="sess-count">0</div></div>
-                             <!-- TOTAL VOLUME (Sent/Recv) -->
+                             <!-- TOTAL VOLUME -->
                              <div class="card-footer-text justify-between w-full"><span class="text-blue-400">↑ <span id="vol-sent">0 B</span></span> <span class="text-green-400">↓ <span id="vol-recv">0 B</span></span></div>
                         </div>
                     </div>
@@ -1019,7 +1019,6 @@ install_dashboard_assets() {
                         <button onclick="saveConfig()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/50">Save & Restart</button>
                     </div>
                     <div id="cfg-code" class="premium-card p-0 overflow-hidden hidden" style="min-height: 600px;"><textarea id="config-editor" class="code-editor" spellcheck="false"></textarea></div>
-                    <!-- (Visual config omitted for brevity, same as before) -->
                     <div id="cfg-visual" class="premium-card space-y-8" style="min-height: auto;">
                         <div><h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Core Connection</h4><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"><div><label class="block text-xs font-medium text-gray-400 mb-1.5">Bind Address</label><input type="text" id="v-listen" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div><div><label class="block text-xs font-medium text-gray-400 mb-1.5">PSK</label><input type="text" id="v-psk" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500"></div><div><label class="block text-xs font-medium text-gray-400 mb-1.5">Mimic</label><input type="text" id="v-mimic" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div><div><label class="block text-xs font-medium text-gray-400 mb-1.5">Transport</label><select id="v-transport" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"><option value="httpsmux">HTTPS</option><option value="wssmux">WSS</option></select></div></div></div>
                         <div><h4 class="text-sm font-bold text-green-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Obfuscation</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label class="block text-xs font-medium text-gray-400 mb-1.5">Key</label><input type="text" id="v-obfs-key" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div><div><label class="block text-xs font-medium text-gray-400 mb-1.5">IV</label><input type="text" id="v-obfs-iv" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm"></div></div></div>
@@ -1067,12 +1066,12 @@ install_dashboard_assets() {
                 $('#ram-used').innerText = usedGB; $('#ram-total').innerText = '/ '+totalGB;
                 $('#ram-bar').style.width = Math.min((usedBytes/totalBytes)*100, 100) + '%';
                 
-                $('#sess-count').innerText = data.stats.total_conns || 0;
+                // --- FIX: Use ACTIVE connections, NOT total (which only goes up) ---
+                $('#sess-count').innerText = data.stats.active_conns || 0;
                 
                 if(data.uptime_s){const s=data.uptime_s;const d=Math.floor(s/86400);const h=Math.floor((s%86400)/3600);const m=Math.floor((s%3600)/60);$('#svc-uptime').innerHTML=`${d}<span class="unit-span">d</span> ${h}<span class="unit-span">h</span> ${m}<span class="unit-span">m</span>`;}
                 if(data.start_time){const s=new Date(data.start_time);$('#start-time').innerText=s.toLocaleTimeString();}
                 
-                // --- FIX: Using correct JSON keys (bytes_recv, bytes_sent) and local hb() formatting ---
                 const hb=b=>{const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(1)+' '+u[i];};
                 $('#vol-sent').innerText = hb(data.stats.bytes_recv||0); 
                 $('#vol-recv').innerText = hb(data.stats.bytes_sent||0);
@@ -1113,6 +1112,7 @@ install_dashboard_assets() {
 
 EOF
 }
+
 
 
 
