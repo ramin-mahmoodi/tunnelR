@@ -573,8 +573,8 @@ install_client_auto() {
         return
     fi
 
-    read -p "Connection Pool Size [8]: " POOL_SIZE
-    POOL_SIZE=${POOL_SIZE:-8}
+    read -p "Connection Pool Size [16]: " POOL_SIZE
+    POOL_SIZE=${POOL_SIZE:-16}
 
 
 

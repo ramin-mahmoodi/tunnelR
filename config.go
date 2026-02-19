@@ -245,8 +245,8 @@ func applyProfile(c *Config) {
 		}
 		c.HTTPMimic.ChunkedEncoding = false
 		for i := range c.Paths {
-			if c.Paths[i].ConnectionPool < 4 {
-				c.Paths[i].ConnectionPool = 4
+			if c.Paths[i].ConnectionPool < 16 {
+				c.Paths[i].ConnectionPool = 16
 			}
 			c.Paths[i].AggressivePool = true
 			if c.Paths[i].RetryInterval <= 0 || c.Paths[i].RetryInterval > 2 {
