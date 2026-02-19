@@ -239,8 +239,6 @@ func applyProfile(c *Config) {
 		if c.Smux.MaxStream < 8388608 {
 			c.Smux.MaxStream = 8388608
 		}
-		c.Smux.MaxStream = 8388608
-		}
 		// v3.6.7: BDP Tuning for 400Mbps+ @ 120ms (Target ~6MB, setting 8MB safety)
 		if c.Advanced.TCPReadBuffer < 8388608 {
 			c.Advanced.TCPReadBuffer = 8388608
@@ -268,6 +266,7 @@ func applyProfile(c *Config) {
 				c.Paths[i].DialTimeout = 10
 			}
 		}
+	}
 
 	case "stable":
 		// Stable = CONSISTENCY over burst speed: smaller buffers to prevent bloat
