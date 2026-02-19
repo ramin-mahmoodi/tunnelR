@@ -185,6 +185,25 @@ func (s *Server) upgrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// v3.6.11: Server-Side BDP Tuning (Force 8MB buffers)
+	if tcp, ok := conn.(*net.TCPConn); ok {
+		tcp.SetNoDelay(true)
+		tcp.SetKeepAlive(true)
+		tcp.SetKeepAlivePeriod(15 * time.Second)
+		// Default to strict 8MB if not set in config, or use config if available
+		// Since s.Config is available:
+		if s.Config.Advanced.TCPReadBuffer > 0 {
+			tcp.SetReadBuffer(s.Config.Advanced.TCPReadBuffer)
+		} else {
+			tcp.SetReadBuffer(8388608)
+		}
+		if s.Config.Advanced.TCPWriteBuffer > 0 {
+			tcp.SetWriteBuffer(s.Config.Advanced.TCPWriteBuffer)
+		} else {
+			tcp.SetWriteBuffer(8388608)
+		}
+	}
+
 	// ① 101 Switching Protocols — fools firewalls into thinking this is WebSocket
 	switchResp := "HTTP/1.1 101 Switching Protocols\r\n" +
 		"Upgrade: websocket\r\n" +
