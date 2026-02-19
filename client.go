@@ -17,7 +17,7 @@ import (
 )
 
 // Adaptive FrameSize levels: start small (DPI-safe) → ramp up for speed
-var frameSizes = [5]int{2048, 4096, 8192, 16384, 32768}
+var frameSizes = [5]int{16384, 32768, 65536, 131072, 262144} // Tuned for 400Mbps+
 
 // sessionMaxAge defines how long a session can live before being recycled.
 // Recycling prevents ISP/DPI throttling of long-lived connections.
@@ -617,11 +617,18 @@ func (c *Client) setTCPOptions(conn net.Conn) {
 		SetKeepAlive(bool) error
 		SetKeepAlivePeriod(time.Duration) error
 		SetNoDelay(bool) error
+		SetReadBuffer(int) error
+		SetWriteBuffer(int) error
 	}
 	if tc, ok := conn.(hasTCP); ok {
 		tc.SetKeepAlive(true)
 		tc.SetKeepAlivePeriod(time.Duration(c.cfg.Advanced.TCPKeepAlive) * time.Second)
 		tc.SetNoDelay(c.cfg.Advanced.TCPNoDelay)
+		// Force large kernel buffers for high BDP (Bandwidth-Delay Product)
+		// 4MB is sufficient for ~330Mbps @ 100ms RTT
+		// c.cfg.Advanced.TCPReadBuffer usually 0 (default), so we enforce a high minimum
+		tc.SetReadBuffer(4 * 1024 * 1024)
+		tc.SetWriteBuffer(4 * 1024 * 1024)
 	}
 }
 

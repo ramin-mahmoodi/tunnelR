@@ -150,13 +150,13 @@ func applyBaseDefaults(c *Config) {
 		c.Smux.KeepAlive = 10 // 10s — safe for high-latency links
 	}
 	if c.Smux.MaxRecv <= 0 {
-		c.Smux.MaxRecv = 4194304 // 4MB
+		c.Smux.MaxRecv = 16777216 // 4MB
 	}
 	if c.Smux.MaxStream <= 0 {
-		c.Smux.MaxStream = 4194304 // 4MB
+		c.Smux.MaxStream = 8388608 // 4MB
 	}
 	if c.Smux.FrameSize <= 0 {
-		c.Smux.FrameSize = 32768 // 32KB
+		c.Smux.FrameSize = 131072 // 32KB
 	}
 	if c.Smux.Version <= 0 {
 		c.Smux.Version = 2
@@ -219,14 +219,14 @@ func applyProfile(c *Config) {
 		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 5 {
 			c.Smux.KeepAlive = 5
 		}
-		if c.Smux.FrameSize < 32768 {
-			c.Smux.FrameSize = 32768
+		if c.Smux.FrameSize < 131072 {
+			c.Smux.FrameSize = 131072
 		}
-		if c.Smux.MaxRecv < 4194304 {
-			c.Smux.MaxRecv = 4194304
+		if c.Smux.MaxRecv < 16777216 {
+			c.Smux.MaxRecv = 16777216
 		}
-		if c.Smux.MaxStream < 4194304 {
-			c.Smux.MaxStream = 4194304
+		if c.Smux.MaxStream < 8388608 {
+			c.Smux.MaxStream = 8388608
 		}
 		// NO delay — speed is king
 		c.Obfuscation.MinDelayMS = 0
@@ -255,7 +255,7 @@ func applyProfile(c *Config) {
 			c.Smux.KeepAlive = 15
 		}
 		if c.Smux.FrameSize <= 0 {
-			c.Smux.FrameSize = 32768 // Revert to 32KB (2KB caused high-PPS overhead)
+			c.Smux.FrameSize = 131072 // Revert to 32KB (2KB caused high-PPS overhead)
 		}
 		// Increase buffers to support ~400Mbps @ 200ms RTT (BDP tuning)
 		if c.Smux.MaxRecv <= 0 || c.Smux.MaxRecv > 2097152 {
@@ -284,8 +284,8 @@ func applyProfile(c *Config) {
 		if c.Smux.KeepAlive <= 0 || c.Smux.KeepAlive > 5 {
 			c.Smux.KeepAlive = 5
 		}
-		if c.Smux.FrameSize < 32768 {
-			c.Smux.FrameSize = 32768
+		if c.Smux.FrameSize < 131072 {
+			c.Smux.FrameSize = 131072
 		}
 		c.Obfuscation.MinDelayMS = 0
 		c.Obfuscation.MaxDelayMS = 0
