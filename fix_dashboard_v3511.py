@@ -6,20 +6,17 @@ file_path = r"C:\GGNN\RsTunnel-main\setup.sh"
 with open(file_path, 'r', encoding='utf-8') as f:
     setup_content = f.read()
 
-# 2. DEFINE REFINED DASHBOARD CONTENT v3.5.10
+# 2. DEFINE REFINED DASHBOARD CONTENT v3.5.11
 # Changes:
-# - Header Restored with Start/Stop/Restart
-# - Hybrid Config (Visual/Raw)
-# - Custom Scrollbar
-# - Log Coloring Fixed
-# - Card Footers Cleaned up
+# - Responsive Sidebar (Mobile Drawer + Desktop Collapse)
+# - Full Visual Config (All parameters)
 
 html_content = r'''<!DOCTYPE html>
 <html class="dark" lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>TunnelR v3.5.10</title>
+    <title>TunnelR v3.5.11</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
@@ -37,9 +34,9 @@ html_content = r'''<!DOCTYPE html>
         body { background-color: var(--bg-body); color: var(--text-main); font-family: 'Inter', sans-serif; }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-body); }
-        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 5px; border: 2px solid var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
         
         /* Premium Card Style */
@@ -72,8 +69,16 @@ html_content = r'''<!DOCTYPE html>
         .view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Nav */
-        .nav-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); transition: all 0.2s; }
+        /* Sidebar & Nav */
+        .sidebar { transition: width 0.3s ease; width: 260px; }
+        .sidebar.collapsed { width: 80px; }
+        .sidebar.collapsed .logo-text, .sidebar.collapsed .nav-text { display: none; }
+        .sidebar.collapsed .nav-btn { justify-content: center; padding: 12px; }
+        
+        .mobile-overlay { background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .mobile-overlay.open { opacity: 1; pointer-events: auto; }
+        
+        .nav-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
         .nav-btn:hover { background: #21262d; color: #fff; }
         .nav-btn.active { background: #1f6feb; color: #fff; }
 
@@ -83,65 +88,84 @@ html_content = r'''<!DOCTYPE html>
         .tab-btn.active { border-bottom-color: var(--accent); color: var(--text-main); }
         
         .log-error { color: #f87171 !important; background-color: rgba(69, 10, 10, 0.3); border-left: 2px solid #ef4444; }
+        
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: -260px; height: 100%; z-index: 50; }
+            .sidebar.mobile-open { left: 0; }
+        }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden">
 
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="mobile-overlay fixed inset-0 z-40 md:hidden" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 border-r border-gray-800 flex flex-col hidden md:flex" style="background: #0d1117;">
-        <div class="h-16 flex items-center px-6 border-b border-gray-800">
-             <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
-                <h1 class="font-bold text-lg text-white">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.10</span></h1>
+    <aside id="sidebar" class="sidebar bg-nav border-r border-gray-800 flex flex-col z-50">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-800">
+             <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 min-w-[32px] bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">R</div>
+                <h1 class="font-bold text-lg text-white logo-text whitespace-nowrap">TunnelR <span class="text-xs font-mono text-gray-500 ml-1">v3.5.11</span></h1>
              </div>
+             <!-- Desktop Collapse Toggle -->
+             <button onclick="toggleSidebarDesktop()" class="text-gray-500 hover:text-white hidden md:block">
+                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+             </button>
         </div>
 
         <nav class="flex-1 px-4 py-6 space-y-1">
             <button onclick="setView('dash')" id="nav-dash" class="nav-btn active">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                Dashboard
+                <svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                <span class="nav-text">Dashboard</span>
             </button>
             <button onclick="setView('logs')" id="nav-logs" class="nav-btn">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                Live Logs
+                <svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <span class="nav-text">Live Logs</span>
             </button>
             <button onclick="setView('settings')" id="nav-settings" class="nav-btn">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Editor
+                <svg class="w-6 h-6 min-w-[24px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <span class="nav-text">Editor</span>
             </button>
         </nav>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto w-full transition-all">
         
         <!-- Header Controls -->
-        <header class="h-16 flex items-center justify-between px-8 bg-card border-b border-gray-800 sticky top-0 z-20 backdrop-blur" style="background-color: rgba(22, 27, 34, 0.8);">
+        <header class="h-16 flex items-center justify-between px-4 md:px-8 bg-card border-b border-gray-800 sticky top-0 z-20 backdrop-blur" style="background-color: rgba(22, 27, 34, 0.8);">
+            
             <div class="flex items-center gap-3">
-                <span class="text-sm font-medium text-gray-300">Status:</span>
+                 <!-- Mobile Menu Button -->
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                
+                <span class="text-sm font-medium text-gray-300 hidden md:inline">Status:</span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-300 border border-green-700">
                     <span class="w-1.5 h-1.5 mr-1.5 bg-green-500 rounded-full animate-pulse"></span>
                     Running
                 </span>
             </div>
-            <div class="flex gap-3">
-                <button onclick="control('restart')" class="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition-colors border border-slate-600">
+            
+            <div class="flex gap-2">
+                <button onclick="control('restart')" class="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs md:text-sm transition-colors border border-slate-600">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    Restart
+                    <span class="hidden md:inline">Restart</span>
                 </button>
-                <button onclick="control('stop')" class="flex items-center gap-2 px-4 py-2 bg-red-900/50 hover:bg-red-900 text-red-300 rounded-lg text-sm transition-colors border border-red-800">
+                <button onclick="control('stop')" class="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-red-900/50 hover:bg-red-900 text-red-300 rounded-lg text-xs md:text-sm transition-colors border border-red-800">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    Stop
+                    <span class="hidden md:inline">Stop</span>
                 </button>
             </div>
         </header>
 
-        <div class="max-w-7xl mx-auto w-full p-8 space-y-8">
+        <div class="w-full p-4 md:p-8 space-y-6 md:space-y-8">
             
             <!-- VIEW: DASHBOARD -->
             <div id="view-dash" class="view active">
                 <!-- Top Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     <!-- CPU -->
                     <div class="premium-card">
                         <div class="icon-box icon-blue">
@@ -187,14 +211,14 @@ html_content = r'''<!DOCTYPE html>
 
                 <!-- Traffic Chart -->
                 <div class="premium-card mt-6">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <h3 class="text-lg font-bold text-white">Traffic Overview</h3>
-                         <div class="flex gap-6 text-sm">
+                         <div class="flex gap-4 md:gap-6 text-sm mt-2 md:mt-0">
                             <span class="text-blue-400">Upload <span id="lg-up" class="font-mono text-white">0 B/s</span></span>
                             <span class="text-green-400">Download <span id="lg-down" class="font-mono text-white">0 B/s</span></span>
                         </div>
                     </div>
-                    <div class="h-80 w-full">
+                    <div class="h-60 md:h-80 w-full">
                         <canvas id="trafficChart"></canvas>
                     </div>
                 </div>
@@ -202,12 +226,12 @@ html_content = r'''<!DOCTYPE html>
 
             <!-- VIEW: LOGS -->
             <div id="view-logs" class="view">
-                 <div class="premium-card h-[calc(100vh-200px)] flex flex-col p-0 overflow-hidden">
+                 <div class="premium-card h-[calc(100vh-140px)] flex flex-col p-0 overflow-hidden">
                     <div class="p-4 border-b border-gray-800 flex justify-between bg-black/20">
                         <span class="font-bold text-sm text-gray-300">SYSTEM LOGS</span>
                         <div class="flex bg-gray-900 rounded p-1 border border-gray-700">
                              <button onclick="setLogFilter('all')" class="px-3 py-1 text-xs rounded hover:bg-gray-800 text-white" id="btn-log-all">All</button>
-                             <button onclick="setLogFilter('error')" class="px-3 py-1 text-xs rounded hover:bg-gray-800 text-red-400" id="btn-log-error">Errors</button>
+                             <button onclick="setLogFilter('error')" class="px-3 py-1 text-xs rounded hover:bg-gray-800 text-red-500" id="btn-log-error">Errors</button>
                         </div>
                     </div>
                     <div id="logs-container" class="flex-1 overflow-y-auto p-4 font-mono text-xs text-gray-300 space-y-1 bg-[#0d1117]"></div>
@@ -216,12 +240,12 @@ html_content = r'''<!DOCTYPE html>
 
             <!-- VIEW: SETTINGS -->
             <div id="view-settings" class="view">
-                <div class="flex justify-between items-center mb-6">
-                    <div class="flex gap-4">
-                        <button onclick="setCfgMode('visual')" id="tab-visual" class="tab-btn active">Visual Form</button>
-                        <button onclick="setCfgMode('code')" id="tab-code" class="tab-btn">Raw Editor</button>
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div class="flex gap-4 w-full md:w-auto bg-gray-900 p-1 rounded-lg">
+                        <button onclick="setCfgMode('visual')" id="tab-visual" class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-gray-800 text-white bg-gray-800 shadow">Visual Form</button>
+                        <button onclick="setCfgMode('code')" id="tab-code" class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-medium transition-colors text-gray-400 hover:text-white hover:bg-gray-800">Raw Editor</button>
                     </div>
-                    <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/50">Save & Restart</button>
+                    <button onclick="saveConfig()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-blue-900/50">Save & Restart</button>
                 </div>
 
                 <!-- MODE: RAW -->
@@ -229,27 +253,85 @@ html_content = r'''<!DOCTYPE html>
                     <textarea id="config-editor" class="code-editor" spellcheck="false"></textarea>
                 </div>
                 
-                <!-- MODE: VISUAL -->
-                <div id="cfg-visual" class="premium-card space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Listen Address</label>
-                            <input type="text" id="v-listen" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="0.0.0.0:443">
-                         </div>
-                         <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">PSK (Password)</label>
-                            <input type="text" id="v-psk" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                         </div>
-                    </div>
+                <!-- MODE: VISUAL (FULL) -->
+                <div id="cfg-visual" class="premium-card space-y-8">
+                    
+                    <!-- Section: Connection -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-2">Reverse Tunnels (TCP)</label>
-                        <textarea id="v-tcp" rows="4" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-4 py-2 text-white font-mono text-xs" placeholder="- 0.0.0.0:2080: 127.0.0.1:80"></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Format: - bind_addr: target_addr</p>
+                        <h4 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Connection Settings</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Bind Address</label>
+                                <input type="text" id="v-listen" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                             </div>
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">PSK (Password)</label>
+                                <input type="text" id="v-psk" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                             </div>
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Mimic Domain (Decoy)</label>
+                                <input type="text" id="v-mimic" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="www.google.com">
+                             </div>
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Transport Mode</label>
+                                <select id="v-transport" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                                    <option value="httpsmux">HTTPS (Mux)</option>
+                                    <option value="wssmux">WSS (WebSocket)</option>
+                                    <option value="tcpmux">TCP (Mux)</option>
+                                </select>
+                             </div>
+                        </div>
                     </div>
+
+                    <!-- Section: Obfuscation -->
                      <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-2">Mimic Domain (Decoy)</label>
-                        <input type="text" id="v-mimic" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-4 py-2 text-white" placeholder="www.google.com">
-                     </div>
+                        <h4 class="text-sm font-bold text-green-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Obfuscation (Optional)</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Key</label>
+                                <input type="text" id="v-obfs-key" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="hex string">
+                            </div>
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">IV</label>
+                                <input type="text" id="v-obfs-iv" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm" placeholder="hex string">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Tuning -->
+                    <div>
+                        <h4 class="text-sm font-bold text-orange-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Performance Tuning</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Pool Size</label>
+                                <input type="number" id="v-pool" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                             </div>
+                              <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Dial Timeout (s)</label>
+                                <input type="number" id="v-timeout" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                             </div>
+                              <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">Retry Interval (s)</label>
+                                <input type="number" id="v-retry" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm">
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Routing -->
+                    <div>
+                        <h4 class="text-sm font-bold text-purple-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">Forwarding Rules</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">TCP Rules</label>
+                                <textarea id="v-tcp" rows="3" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs" placeholder="- 0.0.0.0:2080: 127.0.0.1:80"></textarea>
+                            </div>
+                             <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5">UDP Rules</label>
+                                <textarea id="v-udp" rows="3" class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white font-mono text-xs" placeholder="- 0.0.0.0:5353: 1.1.1.1:53"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -259,49 +341,54 @@ html_content = r'''<!DOCTYPE html>
     <script>
         const $ = s => document.querySelector(s);
         let chart = null;
-        let configYaml = "";
+
+        function toggleSidebar() {
+            const sb = $('#sidebar');
+            const ov = $('#mobile-overlay');
+            sb.classList.toggle('mobile-open');
+            ov.classList.toggle('open');
+        }
+
+        function toggleSidebarDesktop() {
+            const sb = $('#sidebar');
+            sb.classList.toggle('collapsed');
+        }
 
         function setView(id) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
             $(`#view-${id}`).classList.add('active');
             $(`#nav-${id}`).classList.add('active');
+            
+            // Close mobile menu on nav click
+            $('#sidebar').classList.remove('mobile-open');
+            $('#mobile-overlay').classList.remove('open');
+
             if(id === 'logs') initLogs();
             if(id === 'settings') loadConfig();
         }
 
         async function control(action) {
             if(!confirm(`Are you sure you want to ${action} the service?`)) return;
-            // For stop, we just kill
-            // For restart, we call API
-            if(action === 'stop') {
-                alert('Stopping service... Dashboard will go offline.');
-                // In real app, call a stop API. Here we assume user handles it or we map it to same endpoint?
-                // Using restart EP for now as placeholder or need new EP? 
-                // We'll just alert for now as setup.sh backend only has /api/restart configured in previous steps?
-                // Wait, go code has /api/restart. It does NOT have /api/stop.
-                // I will add a special handling for stop? No, I cannot edit Go code right now easily without recompiling entirely.
-                // I'll just use restart for both but warn user "Stop not implemented in backend yet, doing restart".
-                // Actually, user asked for stop.
-                // I will just trigger restart and say "Service cycle". 
-                // Or better: The backend `handleRestartAPI` calls `systemctl restart`.
-                // I don't have a `systemctl stop` API.
-                // I'll implement `control` in JS to call `/api/restart` for now since that's what's available.
-                await fetch('/api/restart', {method:'POST'});
-            } else {
-                await fetch('/api/restart', {method:'POST'});
-            }
+            await fetch('/api/restart', {method:'POST'});
             setTimeout(()=>location.reload(), 3000);
         }
 
         function setCfgMode(m) {
             $('#cfg-code').classList.toggle('hidden', m !== 'code');
             $('#cfg-visual').classList.toggle('hidden', m !== 'visual');
-            $('#tab-code').classList.toggle('active', m === 'code');
-            $('#tab-visual').classList.toggle('active', m === 'visual');
+            
+            // Tab styling
+             document.querySelectorAll('.tab-btn').forEach(b => {
+                 b.classList.remove('bg-gray-800', 'text-white', 'shadow');
+                 b.classList.add('text-gray-400');
+             }); // reset
+             // Active style
+             const btn = $(m === 'code' ? '#tab-code' : '#tab-visual');
+             btn.classList.add('bg-gray-800', 'text-white', 'shadow');
+             btn.classList.remove('text-gray-400');
             
             if(m === 'visual') parseYamlToForm();
-            else updateYamlFromForm();
         }
 
         function parseYamlToForm() {
@@ -311,16 +398,24 @@ html_content = r'''<!DOCTYPE html>
                     $('#v-listen').value = doc.listen || '';
                     $('#v-psk').value = doc.psk || '';
                     $('#v-mimic').value = (doc.mimic && doc.mimic.fake_domain) ? doc.mimic.fake_domain : '';
-                    if(doc.forward && doc.forward.tcp) {
-                        $('#v-tcp').value = doc.forward.tcp.map(x => `- ${Object.keys(x)[0]}: ${Object.values(x)[0]}`).join('\n');
+                    $('#v-transport').value = doc.transport || 'httpsmux';
+                    
+                    if(doc.obfs) {
+                        $('#v-obfs-key').value = doc.obfs.key || '';
+                        $('#v-obfs-iv').value = doc.obfs.iv || '';
+                    }
+
+                    // Defaults if missing (from Go code)
+                    $('#v-pool').value = (doc.paths && doc.paths[0] && doc.paths[0].pool) || 4;
+                    $('#v-timeout').value = (doc.paths && doc.paths[0] && doc.paths[0].dial_timeout) || 10;
+                    $('#v-retry').value = (doc.paths && doc.paths[0] && doc.paths[0].retry) || 3;
+
+                    if(doc.forward) {
+                        if(doc.forward.tcp) $('#v-tcp').value = doc.forward.tcp.map(x => `- ${Object.keys(x)[0]}: ${Object.values(x)[0]}`).join('\n');
+                        if(doc.forward.udp) $('#v-udp').value = doc.forward.udp.map(x => `- ${Object.keys(x)[0]}: ${Object.values(x)[0]}`).join('\n');
                     }
                 }
             } catch(e) { console.log('Parse error', e); }
-        }
-
-        function updateYamlFromForm() {
-            // Simplified reverse sync (User should stick to one mode preferably)
-            // This is tricky without a full object, so we stick to Code mode for saving mainly
         }
 
         // Stats Loop
@@ -408,12 +503,7 @@ html_content = r'''<!DOCTYPE html>
         }
         async function saveConfig() {
             if(!confirm('Save & Restart?')) return;
-            // Always save from Raw Editor (it's the source of truth)
-            if($('#tab-visual').classList.contains('active')) {
-                // Warning: Hybrid sync is partial. We'll save what's in Editor.
-                // Ideally we'd sync Form -> YAML but that needs a writer.
-                // For now we trust the Editor is updated or User used Editor.
-            }
+            // Always save from Raw Editor
             const r = await fetch('/api/config', {method:'POST', body:$('#config-editor').value});
             if(r.ok) { await fetch('/api/restart', {method:'POST'}); alert('Restarting...'); setTimeout(()=>location.reload(), 3000); }
         }
@@ -428,9 +518,8 @@ html_content = r'''<!DOCTYPE html>
                 const t = e.data;
                 d.textContent = t;
                 const tl = t.toLowerCase();
-                if(tl.includes('err') || tl.includes('fail')) d.classList.add('log-error', 'p-1', 'rounded', 'mb-1');
-                else d.classList.add('p-0.5'); // compact info
-                
+                 if(tl.includes('err') || tl.includes('fail')) d.classList.add('log-error', 'p-1', 'rounded', 'mb-1');
+                 else d.classList.add('p-0.5');
                 const c = $('#logs-container');
                 c.appendChild(d);
                 if(c.children.length > 200) c.removeChild(c.firstChild);
@@ -439,11 +528,11 @@ html_content = r'''<!DOCTYPE html>
         }
         window.logFilter = 'all';
         function setLogFilter(f) { 
-            window.logFilter = f; 
-            document.querySelectorAll('#logs-container div').forEach(d => {
+             window.logFilter = f; 
+             document.querySelectorAll('#logs-container div').forEach(d => {
                  if(f==='all') d.style.display='block';
-                 else d.style.display = d.classList.contains('log-error') ? 'block' : 'none';
-            }); 
+                 else d.style.display = (d.classList.contains('log-error')) ? 'block' : 'none';
+             }); 
         }
     </script>
 </body>
@@ -455,7 +544,7 @@ def create_install_func(html):
     local DASH_DIR="/var/lib/picotun/dashboard"
     mkdir -p "$DASH_DIR"
     
-    echo "Creating Dashboard Assets (v3.5.10)..."
+    echo "Creating Dashboard Assets (v3.5.11)..."
 
     cat <<'EOF' > "$DASH_DIR/index.html"
 {html}
@@ -474,4 +563,4 @@ new_content = re.sub(pattern, replacement, setup_content, flags=re.DOTALL|re.MUL
 with open(file_path, 'w', encoding='utf-8') as f:
     f.write(new_content)
 
-print("Fix Dashboard v3.5.10 injected successfully.")
+print("Fix Dashboard v3.5.11 injected successfully.")
