@@ -20,7 +20,8 @@ type Config struct {
 	MaxSessions   int    `yaml:"max_sessions"`
 	Heartbeat     int    `yaml:"heartbeat"`
 	SkipTLSVerify bool   `yaml:"skip_tls_verify"` // default true for backward compat
-	Compression   string `yaml:"compression"`     // "snappy" or "" (none)
+	Compression   string `yaml:"compression"`
+	SocksListen   string `yaml:"socks_listen"` // v3.6.12: Local SOCKS5 Listener     // "snappy" or "" (none)
 
 	// ✅ NEW: Dagger-like features
 	NumConnections   int  `yaml:"num_connections"`
@@ -420,6 +421,9 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	applyBaseDefaults(&c)
+		if c.Mode == "client" && c.SocksListen == "" {
+		c.SocksListen = "127.0.0.1:1080"
+	}
 	applyProfile(&c)
 	mapDaggerToLegacy(&c)
 	syncAliases(&c)
