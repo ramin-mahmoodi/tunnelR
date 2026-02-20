@@ -13,7 +13,7 @@ import (
 	httpmux "github.com/amir6dev/rstunnel/PicoTun"
 )
 
-var version = "3.6.12"
+var version = "3.6.13"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -56,7 +56,6 @@ func main() {
 		cl := httpmux.NewClient(cfg)
 		httpmux.StartDashboard(cfg.Dashboard, "client", version, cl, nil)
 		go func() { errCh <- cl.Start(ctx) }()
-		go func() { errCh <- cl.StartSocks(ctx) }()
 
 	default:
 		log.Fatalf("unknown mode: %q (expected server/client)", cfg.Mode)
